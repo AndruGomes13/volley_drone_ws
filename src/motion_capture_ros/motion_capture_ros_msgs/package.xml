@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>motion_capture_ros_msgs</name>
+  <version>0.0.0</version>
+  <description>The motion_capture_ros message package</description>
+
+  <maintainer email="agoncalve@ethz.ch">André Gomes</maintainer>
+  <license>MIT</license>
+
+  <author>André Gomes</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>message_generation</depend>
+  <depend>nav_msgs</depend>
+  <depend>std_msgs</depend>
+
+</package>
