@@ -1,0 +1,29 @@
+{
+    "ros.distro": "noetic",
+    "clangd.path": "clangd-18",
+    "clangd.arguments": ["--compile-commands-dir=${workspaceFolder}/build"],
+    "C_Cpp.intelliSenseEngine": "disabled",
+
+    "python.envFile": "${workspaceFolder}/.env",
+
+  "terminal.integrated.profiles.linux": {
+    "zsh": { "path": "/usr/bin/zsh", "args": ["-l"] },
+    "bash-auto": { "path": "/usr/bin/bash", "args": ["-l"] }
+  },
+
+  // what you see when you hit Ctrl+`
+  "terminal.integrated.defaultProfile.linux": "zsh",
+
+  // what VS Code uses for Tasks, debug, dev-container scripts, etc.
+  "terminal.integrated.automationProfile.linux": "bash-auto",
+  "python.autoComplete.extraPaths": [
+    "/Users/andru/Repos/agilicious_ws_mac/devel/lib/python3.11/site-packages",
+    "/Users/andru/.local/share/mamba/envs/ros_noetic/lib/python3.11/site-packages"
+  ],
+  "python.analysis.extraPaths": [
+    "/Users/andru/Repos/agilicious_ws_mac/devel/lib/python3.11/site-packages",
+    "/Users/andru/.local/share/mamba/envs/ros_noetic/lib/python3.11/site-packages"
+  ]
+
+
+}

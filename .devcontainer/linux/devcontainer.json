@@ -1,0 +1,75 @@
+{
+  "name": "ros_agilicious-cuda",
+  "remoteUser": "agilicious",
+
+  "build": {
+    "context": "${localWorkspaceFolder}",
+    "dockerfile": "${localWorkspaceFolder}/Dockerfile",
+    "args": { "BASE_IMAGE": "nvidia/cuda:12.2.0-base-ubuntu20.04" }
+  },
+  "initializeCommand": "${localWorkspaceFolder}/.devcontainer/scripts/host-setup-xauth.sh",
+  "runArgs": [
+    "--privileged",
+
+    /* identical GPU / namespace flags */
+    "--gpus", "all",
+    "--runtime=nvidia",
+    "--net=host", "--pid", "host", "--ipc", "host",
+
+    "--cap-add", "SYS_NICE",
+    "--cap-add", "SYS_ADMIN",
+    "--cap-add", "IPC_LOCK",
+
+    /* X11 + xauth mounts */
+    "--mount", "type=bind,source=/tmp/.X11-unix,target=/tmp/.X11-unix",
+    "--mount", "type=bind,source=/tmp/.docker.xauth-${localEnv:UID},target=/tmp/.docker.xauth-${localEnv:UID}",
+
+
+    /* misc system mounts */
+    "--mount", "type=bind,source=/dev,target=/dev",
+    "--mount", "type=bind,source=/var/run/dbus/system_bus_socket,target=/var/run/dbus/system_bus_socket",
+
+    /* ports + perf */
+    "--cpuset-cpus", "2-5",
+    "--shm-size=1gb",
+    "--ulimit", "rtprio=99",
+    "--ulimit", "rttime=-1",
+    "--ulimit", "memlock=-1"
+  ],
+
+  "containerEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}",
+    "XAUTHORITY": "/tmp/.docker.xauth-${localEnv:UID}",
+
+    "QT_X11_NO_MITSHM": "1",
+    "DISABLE_ROS1_EOL_WARNINGS": "1",
+    "XDG_RUNTIME_DIR": "/run/user/${localEnv:UID}/",
+    "TERM": "xterm-256color",
+    "HISTFILE": "/home/agilicious/catkin_ws/mount/.zsh_history",
+    "SSH_AUTH_SOCK": "/ssh-agent"
+  },
+
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/agilicious/catkin_ws,type=bind",
+  "workspaceFolder": "/home/agilicious/catkin_ws",
+
+  "mounts": [
+  "source=${env:SSH_AUTH_SOCK},target=/ssh-agent,type=bind",
+  "source=${localWorkspaceFolder}/mount/.tmux.conf,target=/home/agilicious/.tmux.conf,type=bind",
+],
+
+  "settings": { "terminal.integrated.defaultProfile.linux": "zsh" },
+  "postStartCommand": "~/start-vnc.sh zsh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",   // clangd language server
+        "ranch-hand-robotics.rde-pack",                       // ROS helpers (msg/launch syntax, catkin tasks)
+        "ms-vscode.cmake-tools",                   // CMake driver / status bar
+        "ms-vscode.cpptools",                       // fallback debugger + symbol viewer
+        "donjayamanne.python-extension-pack",
+        "ms-python.pylint"
+      ]
+    }
+  }
+}

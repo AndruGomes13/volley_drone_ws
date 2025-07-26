@@ -1,0 +1,64 @@
+{
+  "name": "ros_agilicious-mac",
+  "remoteUser": "agilicious",
+
+  /* Build exactly like build_docker */
+  "build": {
+    "context": "${localWorkspaceFolder}",
+    "dockerfile": "${localWorkspaceFolder}/Dockerfile",
+    "args": { "BASE_IMAGE": "ubuntu:20.04" }
+  },
+
+  /* Host-level flags that your script passed to docker run */
+  "runArgs": [
+    "--privileged",
+
+    "-p", "11311:11311",      // ROS master
+    "-p", "5900:5900", "-p", "5901:5901", // VNC server
+
+    "--cpuset-cpus", "2-5",
+    "--shm-size=1gb",
+    "--ulimit", "rtprio=99",
+    "--ulimit", "rttime=-1",
+    "--ulimit", "memlock=-1"
+  ],
+
+  /* Inside-container environment */
+  "containerEnv": {
+    "DISPLAY_X11": "host.docker.internal:0",
+    "DISPLAY_VNC": ":1",
+    "DISPLAY": ":1",
+
+    "QT_X11_NO_MITSHM": "1",
+    "DISABLE_ROS1_EOL_WARNINGS": "1",
+    "XDG_RUNTIME_DIR": "/run/user/1000/",
+    "TERM": "xterm-256color",
+    "HISTFILE": "/home/agilicious/catkin_ws/mount/.zsh_history",
+    "SSH_AUTH_SOCK": "/ssh-agent"
+  },
+
+  /* Workspace mapping mirrors the volume in your script */
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/agilicious/catkin_ws,type=bind",
+  "workspaceFolder": "/home/agilicious/catkin_ws",
+  "mounts": [
+  "source=/run/host-services/ssh-auth.sock,target=/ssh-agent,type=bind",
+  "source=${localWorkspaceFolder}/mount/.tmux.conf,target=/home/agilicious/.tmux.conf,type=bind",
+  ],
+  
+
+  "settings": { "terminal.integrated.defaultProfile.linux": "zsh" },
+  "postStartCommand": "~/start-vnc.sh zsh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",   // clangd language server
+        "ranch-hand-robotics.rde-pack",                       // ROS helpers (msg/launch syntax, catkin tasks)
+        "ms-vscode.cmake-tools",                   // CMake driver / status bar
+        "ms-vscode.cpptools",                       // fallback debugger + symbol viewer
+        "donjayamanne.python-extension-pack",
+        "ms-python.pylint"
+      ]
+    }
+  }
+}

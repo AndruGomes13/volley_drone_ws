@@ -1,0 +1,6 @@
+build/
+devel/
+logs/
+.catkin_tools/
+**.DS_Store
+**__pycache__**
