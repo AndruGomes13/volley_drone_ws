@@ -13,7 +13,7 @@
 	branch = master
 [submodule "src/rpg/agilicious_internal"]
 	path = src/rpg/agilicious_internal
-	url = git@github.com:AndruGomes13/agilicous_internal_mine.git
+	url = git@github.com:AndruGomes13/agilicious_internal_mine.git
 	branch = main
 [submodule "src/motion_capture_ros/external/libmotioncapture"]
 	path = src/motion_capture_ros/external/libmotioncapture
