@@ -23,7 +23,7 @@
 
     /* X11 + xauth mounts */
     "--mount", "type=bind,source=/tmp/.X11-unix,target=/tmp/.X11-unix",
-    "--mount", "type=bind,source=/tmp/.docker.xauth-${localEnv:UID},target=/tmp/.docker.xauth-${localEnv:UID}",
+    "--mount", "type=bind,source=/tmp/.docker.xauth-1000,target=/tmp/.docker.xauth-1000",
 
     /* misc system mounts */
     "--mount", "type=bind,source=/dev,target=/dev",
@@ -39,11 +39,11 @@
 
   "containerEnv": {
     "DISPLAY": "${localEnv:DISPLAY}",
-    "XAUTHORITY": "/tmp/.docker.xauth-${localEnv:UID}",
+    "XAUTHORITY": "/tmp/.docker.xauth-1000",
 
     "QT_X11_NO_MITSHM": "1",
     "DISABLE_ROS1_EOL_WARNINGS": "1",
-    "XDG_RUNTIME_DIR": "/run/user/${localEnv:UID}/",
+    "XDG_RUNTIME_DIR": "/run/user/1000/",
     "TERM": "xterm-256color",
     "HISTFILE": "/home/agilicious/catkin_ws/mount/.zsh_history",
     "SSH_AUTH_SOCK": "/ssh-agent"
