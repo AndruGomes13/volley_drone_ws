@@ -6,3 +6,9 @@ NOTES:
     "bash-auto": { "path": "/usr/bin/bash", "args": ["-l"] }
   },
   "terminal.integrated.automationProfile.linux": "bash-auto"
+
+
+
+
+  --- To update the submodules ---
+  git submodule update --init --recursive --remote
