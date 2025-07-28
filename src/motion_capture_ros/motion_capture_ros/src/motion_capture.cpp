@@ -1,3 +1,4 @@
+#include "Eigen/src/Geometry/Quaternion.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "motion_capture_ros_msgs/PointCloud.h"
 #include "ros/console.h"
@@ -93,6 +94,21 @@ class MotionCaptureNode
         void publishBodyPose(const libmotioncapture::RigidBody& rigidBody, 
                              const ros::Time& time)
         {
+
+            static const Eigen::Quaternionf q_fix(
+                std::cos(M_PI/4),   // w  = √½
+                std::sin(M_PI/4),   // x  = √½   (+90° about +X)
+                0, 0);              // y,z = 0
+            
+            
+            Eigen::Quaterniond q_ros;
+            if (motionCaptureType=="optitrack") {
+                q_ros=rigidBody.rotation() * q_fix;
+            } else {
+                q_ros=rigidBody.rotation();
+            }
+            
+
             auto& pub = publisher_from_body(rigidBody.name());
             geometry_msgs::PoseStamped poseMsg;
             poseMsg.header.stamp = time;
@@ -100,10 +116,10 @@ class MotionCaptureNode
             poseMsg.pose.position.x = rigidBody.position().x();
             poseMsg.pose.position.y = rigidBody.position().y();
             poseMsg.pose.position.z = rigidBody.position().z();
-            poseMsg.pose.orientation.x = rigidBody.rotation().x();
-            poseMsg.pose.orientation.y = rigidBody.rotation().y();
-            poseMsg.pose.orientation.z = rigidBody.rotation().z();
-            poseMsg.pose.orientation.w = rigidBody.rotation().w();
+            poseMsg.pose.orientation.x = q_ros.x();
+            poseMsg.pose.orientation.y = q_ros.y();
+            poseMsg.pose.orientation.z = q_ros.z();
+            poseMsg.pose.orientation.w = q_ros.w();
             pub.publish(poseMsg);
 
         }
