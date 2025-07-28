@@ -18,7 +18,7 @@ tmux send-keys -t $SESSION:0.0 "$INIT_SETUP" C-m
 tmux send-keys -t $SESSION:0.0 "roscore"
 
 tmux send-keys -t $SESSION:0.1 "$INIT_SETUP" C-m
-tmux send-keys -t $SESSION:0.1 "roslaunch motion_capture_ros motion_capture.launch hostname:=" # To figure out
+tmux send-keys -t $SESSION:0.1 "roslaunch motion_capture_ros motion_capture_optitrack.launch" # To figure out
 
 tmux send-keys -t $SESSION:0.2 "$INIT_SETUP" C-m
 tmux send-keys -t $SESSION:0.2 "roslaunch agiros volley_quadrotor_onboard_betaflight.launch quad_name:=volley_drone" # Adjust quad_name as needed
