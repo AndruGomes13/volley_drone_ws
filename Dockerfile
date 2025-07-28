@@ -32,7 +32,7 @@ RUN sudo apt-get install -y \
 
 # 
 ENV ROS_DISTRO=${ROS_DISTRO}
-ENV HOME=/home/${USERNAME}
+ENV HOME=/home/$USERNAME
 ENV NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:+${NVIDIA_DRIVER_CAPABILITIES},graphics}
 
@@ -98,16 +98,20 @@ RUN groupadd --gid ${GID} ${USERNAME} && \
 RUN groupadd -f -g ${VIDEO_GID} video && \
     usermod  -aG video ${USERNAME}
 
-# clone + install your ZSH setup
-RUN git clone https://github.com/AndruGomes13/zsh-quick-boot.git ~/zsh-quick-boot && \
-    ~/zsh-quick-boot/install.sh
-
 COPY start-vnc.sh /home/agilicious/start-vnc.sh
 RUN chown agilicious:agilicious /home/agilicious/start-vnc.sh && \
     chmod +x /home/agilicious/start-vnc.sh
 
 USER ${USERNAME}
 WORKDIR ${HOME}
+
+# clone + install your ZSH setup
+RUN git clone https://github.com/AndruGomes13/zsh-quick-boot.git ~/zsh-quick-boot && \
+    ~/zsh-quick-boot/install.sh
+
+COPY --chown=${USERNAME}:${USERNAME} dotfiles/.zshrc /tmp/my_zshrc
+RUN cat /tmp/my_zshrc >> ~/.zshrc && rm /tmp/my_zshrc
+
 
 # set up your catkin workspace
 RUN /bin/bash -lc "\
