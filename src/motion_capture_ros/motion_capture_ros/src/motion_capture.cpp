@@ -1,10 +1,10 @@
-#include "Eigen/src/Geometry/Quaternion.h"
+#include <libmotioncapture/motioncapture.h>
+#include <Eigen/Geometry>
 #include "geometry_msgs/PoseStamped.h"
 #include "motion_capture_ros_msgs/PointCloud.h"
 #include "ros/console.h"
 #include "ros/time.h"
 #include <ros/ros.h>
-#include <libmotioncapture/motioncapture.h>
 #include <string>
 #include <unordered_map>
 
@@ -101,7 +101,7 @@ class MotionCaptureNode
                 0, 0);              // y,z = 0
             
             
-            Eigen::Quaterniond q_ros;
+            Eigen::Quaternionf q_ros;
             if (motionCaptureType=="optitrack") {
                 q_ros=rigidBody.rotation() * q_fix;
             } else {
