@@ -16,8 +16,10 @@ class MotionCaptureNode
         MotionCaptureNode(ros::NodeHandle &nh, ros::NodeHandle &private_nh):
             nh_(nh),
             pnh_(private_nh)
-        {
+        {   
+
             ROS_INFO("Motion Capture Node initialized.");
+            last_log_time_ = ros::Time::now();
             
             // Load parameters
             std::string motionCaptureHostname = "";
@@ -81,9 +83,12 @@ class MotionCaptureNode
             time -= ros::Duration(total_latency);
             
             // Publish body poses
+            if (ros::Time::now() - last_log_time_ > ros::Duration(1.0)) {
+                last_log_time_ = ros::Time::now();
+                ROS_INFO("Current time: %f, Latency: %f seconds", time.toSec(), total_latency);
+            }
             ROS_INFO("Publishing poses for %zu bodies", mocap_->rigidBodies().size());
             for (const auto &iter : mocap_->rigidBodies()){
-                std::cout << "Publishing pose for body: " << iter.first << std::endl;
                 publishBodyPose(iter.second, time);
             }
 
@@ -160,6 +165,8 @@ class MotionCaptureNode
 
         std::unordered_map<std::string, ros::Publisher> body_to_publisher_map;
         std::unique_ptr<libmotioncapture::MotionCapture> mocap_;
+
+        ros::Time last_log_time_;
 };
 
 
