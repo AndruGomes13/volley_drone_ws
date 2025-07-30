@@ -3,7 +3,7 @@
 SESSION="run_onboard"
 WORKDIR="$HOME/catkin_ws"
 ROS_SETUP="source $HOME/catkin_ws/devel/setup.sh"
-INIT_SETUP="$ROS_SETUP && cd $WORKDIR  && clear"
+INIT_SETUP="$ROS_SETUP && cd $WORKDIR  && set_ros_ip && clear"
 
 # Create base session and pane 0.0
 tmux new-session -d -s $SESSION -n main -c "$WORKDIR"
