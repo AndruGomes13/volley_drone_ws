@@ -85,9 +85,18 @@ class MotionCaptureNode
             // Publish body poses
             if (ros::Time::now() - last_log_time_ > ros::Duration(1.0)) {
                 last_log_time_ = ros::Time::now();
-                ROS_INFO("Current time: %f, Latency: %f seconds", time.toSec(), total_latency);
+                ROS_INFO(
+                    "Motion Capture Status:\n"
+                    "  Time: %.3f\n"
+                    "  Latency: %.3f seconds\n"
+                    "  Bodies: %zu\n"
+                    "  Point Cloud Points: %d",
+                    time.toSec(),
+                    total_latency,
+                    mocap_->rigidBodies().size(),
+                    int(mocap_->pointCloud().rows())
+                );
             }
-            ROS_INFO("Publishing poses for %zu bodies", mocap_->rigidBodies().size());
             for (const auto &iter : mocap_->rigidBodies()){
                 publishBodyPose(iter.second, time);
             }
@@ -132,7 +141,6 @@ class MotionCaptureNode
         void publishPointCloud(const libmotioncapture::PointCloud& point_cloud, const ros::Time& time)
         {
             int num_points = point_cloud.rows();
-            std::cout << "Publishing point cloud with " << num_points << " points." << std::endl;
             motion_capture_ros_msgs::PointCloud point_cloud_msg;
 
             point_cloud_msg.t = time.toSec();
