@@ -66,7 +66,7 @@ RUN apt-get update  && \
 #--- Setup Python 3.8 ---
 RUN apt-get update && apt-get install -y python3.8-venv python3.8-distutils
 RUN curl -sS https://bootstrap.pypa.io/pip/3.8/get-pip.py | python3.8
-RUN python3.8 -m pip install --no-cache-dir catkin-tools scipy typing_extensions
+RUN python3.8 -m pip install --no-cache-dir catkin-tools scipy typing_extensions pydantic setuptools pyzmq
 
 # --- Setup Python 3.11 Environment for inference ---
 RUN add-apt-repository ppa:deadsnakes/ppa \
@@ -79,7 +79,7 @@ RUN add-apt-repository ppa:deadsnakes/ppa \
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
 RUN python3.11 -m pip install --upgrade pip setuptools wheel
-RUN python3.11 -m pip install --upgrade --ignore-installed PyYAML "jax[cpu]" brax
+RUN python3.11 -m pip install --upgrade --ignore-installed PyYAML "jax[cpu]" brax pyzmq pydantic
 
 # switch default compiler to clang-10
 ENV CC=/usr/bin/clang-10

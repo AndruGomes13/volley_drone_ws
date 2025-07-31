@@ -23,7 +23,9 @@
   "python.analysis.extraPaths": [
     "/Users/andru/Repos/agilicious_ws_mac/devel/lib/python3.11/site-packages",
     "/Users/andru/.local/share/mamba/envs/ros_noetic/lib/python3.11/site-packages"
-  ]
+  ],
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.pythonProjects": []
 
 
 }
