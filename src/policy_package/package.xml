@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>policy_package</name>
+  <version>0.0.1</version>
+  <description>Python-based policy logic for observation and control.</description>
+
+  <maintainer email="you@example.com">Your Name</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies for running Python code -->
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+
+  <!-- Optional: if you have message/service generation -->
+  <!-- <build_depend>message_generation</build_depend> -->
+  <!-- <exec_depend>message_runtime</exec_depend> -->
+
+  <!-- If you use NumPy or similar Python packages -->
+  <exec_depend>python3-numpy</exec_depend>
+
+  <!-- Export info (for Python packages) -->
+  <export>
+  </export>
+</package>

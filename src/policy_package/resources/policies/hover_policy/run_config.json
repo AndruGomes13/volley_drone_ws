@@ -1,0 +1,392 @@
+{
+    "action_repeat": 1,
+    "run_name": "brax_ppo_20250731_153646",
+    "timestamp": "20250731_153645",
+    "env": {
+        "backend": "mjx",
+        "physics_steps_per_control_step": 1,
+        "sim_time_limit": 100.0,
+        "env_name": "drone_3d_env",
+        "policy_timestep": 0.01,
+        "opt_timestep": 0,
+        "reward_config": {
+            "reward_drone_survive": {
+                "kind": "const",
+                "start": 2.0,
+                "end": null,
+                "p_range": [
+                    0.0,
+                    1.0
+                ]
+            },
+            "reward_drone_dist_to_target": {
+                "kind": "exp",
+                "start": -0.25,
+                "end": -1.5,
+                "p_range": [
+                    0.3,
+                    0.6
+                ]
+            },
+            "reward_drone_ang_from_v": {
+                "kind": "const",
+                "start": -0.1,
+                "end": null,
+                "p_range": [
+                    0.0,
+                    1.0
+                ]
+            },
+            "reward_drone_vel": {
+                "kind": "exp",
+                "start": -0.005,
+                "end": -0.05,
+                "p_range": [
+                    0.3,
+                    0.6
+                ]
+            },
+            "reward_drone_ang_vel": {
+                "kind": "exp",
+                "start": -0.02,
+                "end": -1.0,
+                "p_range": [
+                    0.3,
+                    0.6
+                ]
+            },
+            "reward_drone_yaw_rate": {
+                "kind": "zero",
+                "start": 0.0,
+                "end": null,
+                "p_range": [
+                    0.0,
+                    1.0
+                ]
+            },
+            "reward_drone_action": {
+                "kind": "exp",
+                "start": -0.002,
+                "end": -0.1,
+                "p_range": [
+                    0.3,
+                    0.6
+                ]
+            },
+            "reward_drone_action_change": {
+                "kind": "exp",
+                "start": -0.002,
+                "end": -0.1,
+                "p_range": [
+                    0.3,
+                    0.6
+                ]
+            },
+            "reward_drone_action_deviation": {
+                "kind": "zero",
+                "start": 0.0,
+                "end": null,
+                "p_range": [
+                    0.0,
+                    1.0
+                ]
+            },
+            "reward_drone_outside_playground": {
+                "kind": "const",
+                "start": -20.0,
+                "end": null,
+                "p_range": [
+                    0.0,
+                    1.0
+                ]
+            }
+        },
+        "gameplay_config": {
+            "zones_drone_playzone_min": {
+                "kind": "linear",
+                "start": [
+                    -1.0,
+                    -1.0,
+                    -1.0
+                ],
+                "end": [
+                    -2.0,
+                    -2.0,
+                    -2.0
+                ],
+                "p_range": [
+                    0.3,
+                    0.6
+                ]
+            },
+            "zones_drone_playzone_max": {
+                "kind": "linear",
+                "start": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "end": [
+                    2.0,
+                    2.0,
+                    2.0
+                ],
+                "p_range": [
+                    0.3,
+                    0.6
+                ]
+            },
+            "reset_drone_pos_start": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "reset_drone_orientation_rand": {
+                "kind": "linear",
+                "start": 0.3490658503988659,
+                "end": 1.5707963267948966,
+                "p_range": [
+                    0.3,
+                    0.7
+                ]
+            },
+            "reset_drone_ang_vel_rand": {
+                "kind": "linear",
+                "start": 0.3490658503988659,
+                "end": 1.0471975511965976,
+                "p_range": [
+                    0.3,
+                    0.7
+                ]
+            },
+            "reset_drone_pos_rand": {
+                "kind": "linear",
+                "start": [
+                    0.5,
+                    0.5,
+                    0.5
+                ],
+                "end": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "p_range": [
+                    0.3,
+                    0.7
+                ]
+            },
+            "reset_drone_vel_rand": {
+                "kind": "linear",
+                "start": [
+                    0.5,
+                    0.5,
+                    0.5
+                ],
+                "end": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "p_range": [
+                    0.3,
+                    0.7
+                ]
+            }
+        },
+        "action_model_config": {
+            "drone_mass": 0.96,
+            "thrust_to_weight_ratio": 4.0,
+            "drone_inertia_matrix": [
+                [
+                    0.006458015646785498,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.005512745585292578,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    0.008633299730718136
+                ]
+            ],
+            "max_body_rate": [
+                17.837264955382047,
+                17.837264955382047,
+                9.145525280450286
+            ],
+            "max_propeller_thrust": 8.5,
+            "min_propeller_thrust": 0.0,
+            "max_propeller_omega": 6000.0,
+            "min_propeller_omega": 700.0,
+            "rotor_tau": 0.033,
+            "allocation_matrix_inv": [
+                [
+                    0.25,
+                    -2.1739115715026855,
+                    2.631579637527466,
+                    11.363637924194336
+                ],
+                [
+                    0.25,
+                    2.1739115715026855,
+                    2.6315786838531494,
+                    -11.36363697052002
+                ],
+                [
+                    0.25,
+                    2.1739144325256348,
+                    -2.6315786838531494,
+                    11.363637924194336
+                ],
+                [
+                    0.25,
+                    -2.1739144325256348,
+                    -2.631579637527466,
+                    -11.363638877868652
+                ]
+            ],
+            "use_betaflight_mixing": false,
+            "thrust_map_coeff_a": 1.562522e-06,
+            "body_rate_kp": [
+                20.0,
+                20.0,
+                5.0
+            ]
+        },
+        "dr_config": {
+            "use_domain_randomization": false,
+            "density_mult": {
+                "kind": "const_e",
+                "start": [
+                    0.01,
+                    0.01
+                ],
+                "end": [
+                    0.8,
+                    1.2
+                ],
+                "p_range": [
+                    0.6,
+                    0.8
+                ]
+            },
+            "viscosity_mult": {
+                "kind": "const",
+                "start": [
+                    0.9,
+                    1.1
+                ],
+                "end": null,
+                "p_range": [
+                    0.0,
+                    1.0
+                ]
+            },
+            "rotor_tau_variation": {
+                "kind": "const_e",
+                "start": 0.0,
+                "end": 0.2,
+                "p_range": [
+                    0.0,
+                    1.0
+                ]
+            },
+            "thrust_map_coeff_a_variation": {
+                "kind": "const_e",
+                "start": 0.0,
+                "end": 0.1,
+                "p_range": [
+                    0.0,
+                    1.0
+                ]
+            },
+            "drone_mass_mult_range": [
+                0.97,
+                1.03
+            ],
+            "drone_inertia_matrix_variation": [
+                0.95,
+                1.05
+            ],
+            "contact_solref_damping_range": [
+                -10.0,
+                -15.0
+            ],
+            "gear_variation_range": [
+                0.05,
+                0.05,
+                0.05,
+                0.0,
+                0.0,
+                0.005
+            ],
+            "paddle_angle_variation": 0.06981317007977318,
+            "paddle_height_variation": 0.02
+        },
+        "observation_config": {
+            "actor_observation_type": "drone_vicon",
+            "history_length_actor": {
+                "drone_position": 1,
+                "drone_orientation": 1,
+                "drone_velocity": 1,
+                "drone_body_rate": 1,
+                "previous_action": 1
+            },
+            "critic_observation_type": "drone_state",
+            "history_length_critic": {}
+        },
+        "mocap_config_drone": {
+            "delay": 0.0,
+            "position_noise_level": 0.01,
+            "attitude_noise_level": 0.03490658503988659,
+            "occlusion_probability": 0.0,
+            "occlusion_duration_range": 0
+        },
+        "action_delay": 0.02,
+        "action_history": 2,
+        "action_repeat": 1,
+        "action_delay_discrete": 2
+    },
+    "network": {
+        "policy_hidden_layer_sizes": [
+            128,
+            128
+        ],
+        "value_hidden_layer_sizes": [
+            128,
+            128
+        ]
+    },
+    "train": {
+        "num_timesteps": 150000000,
+        "num_evals": 37,
+        "episode_length": 1000,
+        "num_envs": 3072,
+        "batch_size": 512,
+        "num_minibatches": 24,
+        "num_updates_per_batch": 8,
+        "unroll_length": 128,
+        "learning_rate": 0.003,
+        "entropy_cost": 0.0001,
+        "discounting": 0.97,
+        "normalize_observations": true,
+        "seed": 0,
+        "reward_scaling": 1,
+        "clip_epsilon": 0.2,
+        "gae_lambda": 0.95,
+        "action_repeat": 1,
+        "restore_value_fn": true
+    },
+    "logging": {
+        "log_dir_base": "logs_orbax",
+        "checkpoint_dir_base": "runs",
+        "run_name_prefix": "brax_ppo",
+        "tensorboard_interval_steps": 4000000,
+        "max_checkpoints_to_keep": 3
+    }
+}
