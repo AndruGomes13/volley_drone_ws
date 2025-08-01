@@ -8,6 +8,7 @@ import numpy as np
 import rospy
 
 from agiros_msgs.msg._Command import Command
+from geometry_msgs.msg import Vector3
 
 G = 9.81  # Gravitational constant
 DEG = np.pi / 180  # Degrees to radians conversion
@@ -66,5 +67,5 @@ class PolicyToNormalizedThrustAndBodyRate(PolicyToCommandMapper):
             t=time if time is not None else 0.0,
             is_single_rotor_thrust=False,  # Assuming collective thrust and body rates
             collective_thrust=thrust,
-            bodyrates=body_rate,
+            bodyrates=Vector3(body_rate[0], body_rate[1], body_rate[2]),
         )

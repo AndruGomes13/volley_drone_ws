@@ -14,7 +14,7 @@ def populate_observation(observation_class: Type[Observation], data: Observation
     if observation_class is DroneViconObs:
         assert data.drone_state is not None, "Drone state must be provided for DroneViconObs"
         assert data.last_policy_request is not None, "Last policy request must be provided for DroneViconObs"
-        return observation_class(drone_position=data.drone_state.position,
+        return observation_class(drone_position=data.drone_state.position - np.array([0,0,1]),
                                 drone_orientation=data.drone_state.orientation_wxyz,
                                 drone_velocity=data.drone_state.velocity,
                                 drone_body_rate=data.drone_state.body_rate,

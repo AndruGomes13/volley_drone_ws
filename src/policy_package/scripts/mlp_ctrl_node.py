@@ -40,6 +40,7 @@ def main():
     rospy.init_node("mlp_ctrl_node", anonymous=True)
     policy_path = str(rospy.get_param("~policy_path"))
     drone_only = bool(rospy.get_param("~drone_only"))
+    quad_name = str(rospy.get_param("~quad_name"))
     
     if not policy_path:
         rospy.logerr("Policy path not provided. Please set the ~policy_path parameter.")
@@ -50,6 +51,7 @@ def main():
     
     
     pilot = MLPPilot(
+        quad_name=quad_name,
         policy_sampling_frequency=100,  # Hz
         jax_policy_path=Path(policy_path),
         drone_only=drone_only  # Set to True for drone-only mode

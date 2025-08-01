@@ -21,7 +21,7 @@ tmux send-keys -t $SESSION:0.1 "$INIT_SETUP" C-m
 tmux send-keys -t $SESSION:0.1 "roslaunch agiros agisim_volley.launch quad_name:=volley_drone" # Adjust quad_name as needed
 
 tmux send-keys -t $SESSION:0.2 "$INIT_SETUP" C-m
-tmux send-keys -t $SESSION:0.2 "roslaunch policy_package policy_node.launch policy_dir_name:=hover_policy drone_only:=true" # Adjust quad_name as needed
+tmux send-keys -t $SESSION:0.2 "roslaunch policy_package policy_node.launch quad_name:=volley_drone policy_dir_name:=hover_policy drone_only:=true" # Adjust quad_name as needed
 
 tmux send-keys -t $SESSION:0.3 "$INIT_SETUP" C-m
 

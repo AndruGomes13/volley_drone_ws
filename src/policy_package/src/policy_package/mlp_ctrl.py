@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from typing import Deque, Optional, Tuple
-
+import threading
 import numpy as np
 from agiros_msgs.msg import QuadState, Command, PolicyState
 from policy_package.action.policy_to_command import ActionModelConfig, PolicyToNormalizedThrustAndBodyRate
@@ -22,7 +22,10 @@ import policy_package.utilities as utils
 
 
 class MLPPilot:
-    def __init__(self, policy_sampling_frequency: float, jax_policy_path: Path, drone_only: bool = True):
+    def __init__(self, quad_name:str, policy_sampling_frequency: float, jax_policy_path: Path, drone_only: bool = True):
+        
+        self._buf_lock = threading.Lock()
+        self.quad_name = quad_name
         self.drone_only = drone_only
         config_path = jax_policy_path / "run_config.json"
         checkpoint_path = self._get_checkpoint_path(jax_policy_path)
@@ -32,8 +35,8 @@ class MLPPilot:
         self.START_CHECK_WINDOW_DURATION = 1.0 # Seconds
         
         self.position_bounds = (
-            np.array([-10.0, -10.0, -10.0]),
-            np.array([10.0, 10.0, 10.0])
+            np.array([-1.0, -1.0, 0.5]),
+            np.array([1.0, 1.0, 2.0])
         )
         
         # --- State Variables ---
@@ -57,15 +60,14 @@ class MLPPilot:
         self.last_drone_state: Optional[DroneState] = None
         self.last_ball_state: Optional[BallState] = None
         self.last_command: Optional[Command] = None
-        self.last_policy_request: Optional[np.ndarray] = None
+        self.last_policy_request: Optional[np.ndarray] = np.zeros((4,))
         
         
         # --- Buffer Initialization ---
         # These buffers are separate from the observation history. These are mainly for pre-activation checks.
-        self.BUFFER_DRONE_HISTORY_SIZE = int(self.SAMPLING_FREQUENCY * self.START_CHECK_WINDOW_DURATION)
+        self.BUFFER_DRONE_HISTORY_SIZE = int(self.SAMPLING_FREQUENCY * self.START_CHECK_WINDOW_DURATION * 1.5)
 
-        self.drone_position_history: Deque[np.ndarray] = deque(maxlen=self.BUFFER_DRONE_HISTORY_SIZE)
-        self.drone_velocity_history: Deque[np.ndarray] = deque(maxlen=self.BUFFER_DRONE_HISTORY_SIZE)
+        self.drone_state_buffer: Deque[DroneState] = deque(maxlen=self.BUFFER_DRONE_HISTORY_SIZE)
 
         # --- Setup jax policy server ---
         self.inference_server = PolicyServerInterface(
@@ -82,16 +84,16 @@ class MLPPilot:
     
     def init_subscriptions(self):
         if self.drone_only:
-            self.drone_state_sub = rospy.Subscriber("agiros_pilot/state", QuadState, self.callback_drone_state)
+            self.drone_state_sub = rospy.Subscriber(self.quad_name + "/agiros_pilot/state", QuadState, self.callback_drone_state)
         else:
-            self.policy_state_sub = rospy.Subscriber("agiros_pilot/policy_state", PolicyState, self.callback_policy_state)
+            self.policy_state_sub = rospy.Subscriber(self.quad_name + "/agiros_pilot/policy_state", PolicyState, self.callback_policy_state)
         
         self.start_signal_sub = rospy.Subscriber(
-            "/start_policy", Bool, self.callback_start_signal, queue_size=1
+            self.quad_name + "/run_policy", Bool, self.callback_run_signal, queue_size=1
         )
         
     def init_publishers(self):
-        self.command_pub = rospy.Publisher("agiros_pilot/feedthrough_command", Command, queue_size=1, tcp_nodelay=True)
+        self.command_pub = rospy.Publisher(self.quad_name + "/agiros_pilot/feedthrough_command", Command, queue_size=1, tcp_nodelay=True)
     
     # --- Callbacks ---
     def callback_drone_state(self, msg: QuadState):
@@ -99,6 +101,14 @@ class MLPPilot:
         # Process the state message
         drone_state = DroneState.from_msg(msg)
         self.process_drone_state(drone_state)
+        
+        # Parse observation
+        obs_data = self.parse_observation_data()
+        obs = populate_observation(self.observation_model, obs_data)
+        self.observation_history = self.observation_history.push(obs)
+        
+        # Get and publish command
+        self.get_and_publish_command(self.observation_history.to_array())  
         
     def callback_policy_state(self, msg: PolicyState):
         assert not self.drone_only, "Policy state callback should only be used in full policy mode."
@@ -119,7 +129,7 @@ class MLPPilot:
         # Get and publish command
         self.get_and_publish_command(self.observation_history.to_array())        
     
-    def callback_start_signal(self, msg: Bool):
+    def callback_run_signal(self, msg: Bool):
         # Start or stop the policy execution based on the received signal and start conditions
         candidate_start = msg.data
         
@@ -136,8 +146,8 @@ class MLPPilot:
     # --- State Processing ---
     def process_drone_state(self, drone_state: DroneState):
         # Add the drone state to the history buffers
-        self.drone_position_history.append(drone_state.position)
-        self.drone_velocity_history.append(drone_state.velocity)
+        with self._buf_lock:
+            self.drone_state_buffer.appendleft(drone_state)
         
         # Check if the drone state is within the defined bounds
         self._check_drone_state(drone_state)
@@ -161,13 +171,10 @@ class MLPPilot:
     def get_and_publish_command(self, obs:np.ndarray):
         if not self.run_policy:
             return
-        
-        # assert obs.shape == self.observation_history_class.observation_shape
     
         jax_command = self.inference_server.run_inference(obs)  # Call the JAX policy with the observation
-        
-        command = self.policy_to_command.map(jax_command, rospy.Time.now())  # Convert the JAX command to normalized thrust and body rate
-        
+        self.last_policy_request = jax_command
+        command = self.policy_to_command.map(jax_command, rospy.Time.now().to_sec())  # Convert the JAX command to normalized thrust and body rate
         self.command_pub.publish(command)
 
 
@@ -175,7 +182,8 @@ class MLPPilot:
     def _check_drone_state(self, drone_state: DroneState):
         # Check if the state is within the acceptable range
         if not utils.is_within_bounds(drone_state.position, self.position_bounds):
-            rospy.logwarn("Drone position out of bounds: %s", drone_state.position)
+            if self.run_policy:
+                rospy.logwarn("Drone position out of bounds: %s", drone_state.position)
             self._stop_policy()
             
     def parse_config(self, config_path: Path) -> Tuple[ActionModelConfig, ObservationConfig]:
@@ -195,8 +203,9 @@ class MLPPilot:
         return action_config, observation_config
         
     def _stop_policy(self):
+        if self.run_policy:
+            rospy.loginfo("Policy execution stopped.")
         self.run_policy = False
-        rospy.loginfo("Policy execution stopped.")
         
     def _validate_pre_start_conditions(self) -> bool:
         # Perform necessary checks before starting the policy:
@@ -212,43 +221,44 @@ class MLPPilot:
         num_samples_within_timeframe = 0
         failed_checks = False
         
-        for drone_state in self.drone_state_buffer:
-            if drone_state.time < current_time - self.START_CHECK_WINDOW_DURATION:
-                has_enough_duration = True
-                break
-            num_samples_within_timeframe += 1
-            
-            if not utils.is_within_bounds(drone_state.position, self.position_bounds):
-                rospy.logwarn("Drone position out of bounds: %s", drone_state.position)
-                failed_checks = True
-                break
-            
-            if not utils.is_within_bounds(drone_state.velocity, (np.array([-0.1, -0.1, -0.1]), np.array([0.1, 0.1, 0.1]))):
-                rospy.logwarn(
-                    "Drone is not stationary (Linear Velocity = [%f, %f, %f])",
-                    drone_state.velocity[0],
-                    drone_state.velocity[1],
-                    drone_state.velocity[2]
-                )
-                failed_checks = True
-                break
-            
-            if not utils.is_within_bounds(drone_state.angular_velocity, (np.array([-0.1, -0.1, -0.1]), np.array([0.1, 0.1, 0.1]))):
-                rospy.logwarn(
-                    "Drone is not stationary (Angular Velocity = [%f, %f, %f])",
-                    drone_state.angular_velocity[0],
-                    drone_state.angular_velocity[1],
-                    drone_state.angular_velocity[2]
-                )
-                failed_checks = True
-                break
-            
+        with self._buf_lock:
+            for drone_state in self.drone_state_buffer:
+                if drone_state.time < current_time - self.START_CHECK_WINDOW_DURATION:
+                    has_enough_duration = True
+                    break
+                num_samples_within_timeframe += 1
+                
+                if not utils.is_within_bounds(drone_state.position, self.position_bounds):
+                    rospy.logwarn("Drone position out of bounds: %s", drone_state.position)
+                    failed_checks = True
+                    break
+                
+                if not utils.is_within_bounds(drone_state.velocity, (np.array([-0.1, -0.1, -0.1]), np.array([0.1, 0.1, 0.1]))):
+                    rospy.logwarn(
+                        "Drone is not stationary (Linear Velocity = [%f, %f, %f])",
+                        drone_state.velocity[0],
+                        drone_state.velocity[1],
+                        drone_state.velocity[2]
+                    )
+                    failed_checks = True
+                    break
+                
+                if not utils.is_within_bounds(drone_state.body_rate, (np.array([-0.1, -0.1, -0.1]), np.array([0.1, 0.1, 0.1]))):
+                    rospy.logwarn(
+                        "Drone is not stationary (Angular Velocity = [%f, %f, %f])",
+                        drone_state.body_rate[0],
+                        drone_state.body_rate[1],
+                        drone_state.body_rate[2]
+                    )
+                    failed_checks = True
+                    break
+                
         if not has_enough_duration:
             rospy.logwarn("Not enough duration in drone state buffer to start policy.")
             return False
         
         if num_samples_within_timeframe < MIN_SAMPLES:
-            rospy.logwarn("Not enough samples in drone state buffer to start policy.")
+            rospy.logwarn(f"Not enough samples in drone state buffer to start policy. Currently {num_samples_within_timeframe}/{MIN_SAMPLES}")
             return False
         
         if failed_checks:

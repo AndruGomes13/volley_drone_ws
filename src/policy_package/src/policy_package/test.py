@@ -1,12 +1,9 @@
-import time
-import timeit
+from collections import deque
 
 
-def f():
-    # Simulate some work
-    time.sleep(0.1)
-    return "done"
+d = deque(maxlen=10)
 
-N = 20  # Number of times to run the function
-res = timeit.repeat(f, repeat=3, number=N)
-print(f"Function executed {N} times in: {res} seconds")
+for i in range(14):
+    d.appendleft(i)
+    
+print(d)

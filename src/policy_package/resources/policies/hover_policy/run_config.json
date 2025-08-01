@@ -1,7 +1,7 @@
 {
     "action_repeat": 1,
-    "run_name": "brax_ppo_20250731_153646",
-    "timestamp": "20250731_153645",
+    "run_name": "brax_ppo_20250801_102854",
+    "timestamp": "20250801_102854",
     "env": {
         "backend": "mjx",
         "physics_steps_per_control_step": 1,
@@ -306,21 +306,21 @@
                 ]
             },
             "drone_mass_mult_range": [
-                0.97,
-                1.03
-            ],
-            "drone_inertia_matrix_variation": [
                 0.95,
                 1.05
+            ],
+            "drone_inertia_matrix_variation": [
+                0.5,
+                1.2
             ],
             "contact_solref_damping_range": [
                 -10.0,
                 -15.0
             ],
             "gear_variation_range": [
-                0.05,
-                0.05,
-                0.05,
+                0.07,
+                0.07,
+                0.07,
                 0.0,
                 0.0,
                 0.005
@@ -335,7 +335,8 @@
                 "drone_orientation": 1,
                 "drone_velocity": 1,
                 "drone_body_rate": 1,
-                "previous_action": 1
+                "previous_action": 1,
+                "propeller_omega": 1
             },
             "critic_observation_type": "drone_state",
             "history_length_critic": {}
@@ -347,10 +348,10 @@
             "occlusion_probability": 0.0,
             "occlusion_duration_range": 0
         },
-        "action_delay": 0.02,
-        "action_history": 2,
+        "action_delay": 0.04,
+        "action_history": 4,
         "action_repeat": 1,
-        "action_delay_discrete": 2
+        "action_delay_discrete": 4
     },
     "network": {
         "policy_hidden_layer_sizes": [
