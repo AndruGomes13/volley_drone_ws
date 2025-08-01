@@ -22,10 +22,10 @@ tmux send-keys -t $SESSION:0.1 "$INIT_SETUP" C-m
 tmux send-keys -t $SESSION:0.1 "roslaunch motion_capture_ros mc_drone_aim.launch" # To figure out
 
 tmux send-keys -t $SESSION:0.2 "$INIT_SETUP" C-m
-tmux send-keys -t $SESSION:0.2 "roslaunch agiros volley_policy_quadrotor_onboard_betaflight.launch quad_name:=volley_drone" # Adjust quad_name as needed
+tmux send-keys -t $SESSION:0.2 "roslaunch agiros volley_quadrotor_onboard_betaflight.launch quad_name:=volley_drone" # Adjust quad_name as needed
 
 tmux send-keys -t $SESSION:0.3 "$INIT_SETUP" C-m
-tmux send-keys -t $SESSION:0.3 "roslaunch policy_package policy_node.launch policy_name:=hover_policy drone_only:=true" # Adjust quad_name as needed
+tmux send-keys -t $SESSION:0.3 "roslaunch policy_package policy_node.launch policy_dir_name:=hover_policy drone_only:=true quad_name:=volley_dron" # Adjust quad_name as needed
 
 tmux send-keys -t $SESSION:0.4 "$INIT_SETUP" C-m
 
