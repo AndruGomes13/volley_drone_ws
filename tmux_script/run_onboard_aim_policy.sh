@@ -12,6 +12,7 @@ tmux new-session -d -s $SESSION -n main -c "$WORKDIR"
 tmux split-window -h -t $SESSION:0.0 -c "$WORKDIR"    # Pane 0.1
 tmux split-window -v -t $SESSION:0.0 -c "$WORKDIR"    # Pane 0.2
 tmux split-window -v -t $SESSION:0.1 -c "$WORKDIR"    # Pane 0.3
+tmux split-window -v -t $SESSION:0.2 -c "$WORKDIR"    # Pane 0.4
 
 # Now send commands
 tmux send-keys -t $SESSION:0.0 "$INIT_SETUP" C-m
@@ -21,9 +22,12 @@ tmux send-keys -t $SESSION:0.1 "$INIT_SETUP" C-m
 tmux send-keys -t $SESSION:0.1 "roslaunch motion_capture_ros mc_drone_aim.launch" # To figure out
 
 tmux send-keys -t $SESSION:0.2 "$INIT_SETUP" C-m
-tmux send-keys -t $SESSION:0.2 "roslaunch agiros volley_policy_quadrotor_onboard_betaflight.launch quad_name:=volley_drone policy_name:=hover_policy drone_only:=true" # Adjust quad_name as needed
+tmux send-keys -t $SESSION:0.2 "roslaunch agiros volley_policy_quadrotor_onboard_betaflight.launch quad_name:=volley_drone" # Adjust quad_name as needed
 
 tmux send-keys -t $SESSION:0.3 "$INIT_SETUP" C-m
+tmux send-keys -t $SESSION:0.3 "roslaunch policy_package policy_node.launch policy_name:=hover_policy drone_only:=true" # Adjust quad_name as needed
+
+tmux send-keys -t $SESSION:0.4 "$INIT_SETUP" C-m
 
 tmux select-pane -t $SESSION:0.0
 tmux attach -t $SESSION
