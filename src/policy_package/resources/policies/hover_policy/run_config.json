@@ -1,7 +1,7 @@
 {
     "action_repeat": 1,
-    "run_name": "brax_ppo_20250801_102854",
-    "timestamp": "20250801_102854",
+    "run_name": "brax_ppo_20250801_104610",
+    "timestamp": "20250801_104610",
     "env": {
         "backend": "mjx",
         "physics_steps_per_control_step": 1,
@@ -331,8 +331,8 @@
         "observation_config": {
             "actor_observation_type": "drone_vicon",
             "history_length_actor": {
-                "drone_position": 1,
-                "drone_orientation": 1,
+                "drone_position": 3,
+                "drone_orientation": 3,
                 "drone_velocity": 1,
                 "drone_body_rate": 1,
                 "previous_action": 1,

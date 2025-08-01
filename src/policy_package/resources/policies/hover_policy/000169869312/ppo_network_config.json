@@ -1,1 +1,1 @@
-{"network_factory_kwargs": {"policy_hidden_layer_sizes": [128, 128], "value_hidden_layer_sizes": [128, 128], "policy_obs_key": "actor", "value_obs_key": "critic"}, "normalize_observations": true, "observation_size": {"actor": 17, "critic": 17}, "action_size": 4}
+{"network_factory_kwargs": {"policy_hidden_layer_sizes": [128, 128], "value_hidden_layer_sizes": [128, 128], "policy_obs_key": "actor", "value_obs_key": "critic"}, "normalize_observations": true, "observation_size": {"actor": 31, "critic": 17}, "action_size": 4}
