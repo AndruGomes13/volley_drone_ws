@@ -68,7 +68,9 @@
         "ms-vscode.cmake-tools",                   // CMake driver / status bar
         "ms-vscode.cpptools",                       // fallback debugger + symbol viewer
         "donjayamanne.python-extension-pack",
-        "ms-python.pylint"
+        "ms-python.pylint",
+        "donjayamanne.gi",
+        "eamodio.gitlens"
       ]
     }
   }
