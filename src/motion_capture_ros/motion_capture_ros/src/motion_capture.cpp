@@ -1,6 +1,7 @@
 #include <libmotioncapture/motioncapture.h>
 #include <Eigen/Geometry>
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/PointStamped.h"
 #include "motion_capture_ros_msgs/PointCloud.h"
 #include "ros/console.h"
 #include "ros/time.h"
@@ -81,9 +82,9 @@ class MotionCaptureNode
                 total_latency += iter.value();
             }
             if (total_latency > 0.01){
-                ROS_WARN("Motion capture latency is high (%.3f seconds).", total_latency);
+                ROS_ERROR("Motion capture latency is high (%.3f seconds).", total_latency);
             } else if (total_latency < 0){
-                ROS_WARN("Motion capture latency is negative (%.3f seconds).", total_latency);
+                ROS_ERROR("Motion capture latency is negative (%.3f seconds).", total_latency);
             }
             time -= ros::Duration(total_latency);
 
@@ -153,14 +154,13 @@ class MotionCaptureNode
 
             for (int i = 0; i < num_points; ++i) {
 
-                geometry_msgs::PoseStamped pointPoseMsg;
+                geometry_msgs::PointStamped pointPoseMsg;
                 pointPoseMsg.header.stamp = time;
                 pointPoseMsg.header.frame_id = "world";
-                pointPoseMsg.pose.position.x = point_cloud(i, 0);
-                pointPoseMsg.pose.position.y = point_cloud(i, 1);
-                pointPoseMsg.pose.position.z = point_cloud(i, 2);
-                pointPoseMsg.pose.orientation.w = 1.0; // Assuming no rotation for points
-                point_cloud_msg.poses.push_back(pointPoseMsg);
+                pointPoseMsg.point.x = point_cloud(i, 0);
+                pointPoseMsg.point.y = point_cloud(i, 1);
+                pointPoseMsg.point.z = point_cloud(i, 2);
+                point_cloud_msg.points.push_back(pointPoseMsg);
             }
             pointCloudMotionCapturePub.publish(point_cloud_msg);
         }
