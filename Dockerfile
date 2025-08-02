@@ -46,7 +46,7 @@ RUN apt-get update && \
       libyaml-cpp-dev libeigen3-dev libgoogle-glog-dev \
       ccache tmux net-tools iputils-ping usbutils screen \
       automake bison flex gperf libncurses5-dev libtool \
-      libusb-1.0-0-dev pkg-config dfu-util \
+      libusb-1.0-0-dev pkg-config dfu-util lsof \
       linux-tools-generic dbus xdg-utils clangd-18 geographiclib-tools && \
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60 \
                         --slave /usr/bin/g++ g++ /usr/bin/g++-9 && \
