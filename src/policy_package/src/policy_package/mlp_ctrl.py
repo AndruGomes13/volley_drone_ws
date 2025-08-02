@@ -30,6 +30,7 @@ class MLPPilot:
         config_path = jax_policy_path / "run_config.json"
         checkpoint_path = self._get_checkpoint_path(jax_policy_path)
         self.action_config, self.observation_config = self.parse_config(config_path)
+
         # --- Some Parameters ---
         self.SAMPLING_FREQUENCY= policy_sampling_frequency
         self.START_CHECK_WINDOW_DURATION = 1.0 # Seconds
@@ -79,6 +80,7 @@ class MLPPilot:
         # --- ROS Initialization ---
         self.init_subscriptions()
         self.init_publishers()
+        self.init_timers()
         
         rospy.loginfo("MLP Pilot initialized with policy sampling frequency: %f Hz", self.SAMPLING_FREQUENCY)
     
@@ -94,7 +96,11 @@ class MLPPilot:
         
     def init_publishers(self):
         self.command_pub = rospy.Publisher(self.quad_name + "/agiros_pilot/feedthrough_command", Command, queue_size=1, tcp_nodelay=True)
-    
+        self.status_pub = rospy.Publisher(self.quad_name + "/policy_status", Bool, queue_size=1, tcp_nodelay=True)
+
+    def init_timers(self):
+        rospy.Timer(rospy.Duration.from_sec(0.1), self.status_callback)
+        
     # --- Callbacks ---
     def callback_drone_state(self, msg: QuadState):
         assert self.drone_only, "Drone state callback should only be used in drone-only mode."
@@ -142,7 +148,15 @@ class MLPPilot:
             rospy.loginfo("Start signal received, initiating policy execution.")
         else:
             rospy.loginfo("Stop signal received, halting policy execution.")
-       
+        
+    def status_callback(self, event):
+        """
+        Publish the current status of the policy execution.
+        """
+        status_msg = Bool()
+        status_msg.data = self.run_policy
+        self.status_pub.publish(status_msg)
+        
     # --- State Processing ---
     def process_drone_state(self, drone_state: DroneState):
         # Add the drone state to the history buffers
