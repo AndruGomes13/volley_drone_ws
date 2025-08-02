@@ -80,7 +80,13 @@ class MotionCaptureNode
             for (const auto &iter : latency) {
                 total_latency += iter.value();
             }
+            if (total_latency > 0.01){
+                ROS_WARN("Motion capture latency is high (%.3f seconds).", total_latency);
+            } else if (total_latency < 0){
+                ROS_WARN("Motion capture latency is negative (%.3f seconds).", total_latency);
+            }
             time -= ros::Duration(total_latency);
+
             
             // Publish body poses
             if (ros::Time::now() - last_log_time_ > ros::Duration(1.0)) {
