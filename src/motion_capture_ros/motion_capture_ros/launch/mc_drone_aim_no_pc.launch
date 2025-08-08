@@ -1,0 +1,19 @@
+<launch>
+    <arg name="quad_name"/>
+     <node pkg="motion_capture_ros" type="motion_capture_node" name="motion_capture_node" output="screen">
+       <param name="type" value="optitrack"/>
+       <param name="hostname" value="192.168.1.16"/>
+       <param name="interface_ip" value="192.168.1.22"/>
+       <param name="publish_point_clouds" value="false"/>
+       <!-- <param name="interface_ip" value="192.168.123.201"/> -->
+       <!-- <param name="port_command" value="1510"/> -->
+     </node>
+ </launch>
+<!-- <launch>
+    <arg name="quad_name"/>
+     <node pkg="motion_capture_ros" type="motion_capture_node" name="motion_capture_node" output="screen">
+       <param name="type" value="optitrack"/>
+       <param name="hostname" value="239.255.42.99"/>
+       <param name="interface_ip" value="192.168.123.201"/>
+     </node>
+ </launch> -->

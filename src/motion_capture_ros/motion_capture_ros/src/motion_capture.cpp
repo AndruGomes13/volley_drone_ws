@@ -28,6 +28,7 @@ class MotionCaptureNode
             private_nh.getParam("hostname", motionCaptureHostname);
             private_nh.getParam("interface_ip", motionCaptureInterfaceIP);
             private_nh.getParam("port_command", motionCapturePortCommand);
+            private_nh.getParam("publish_point_clouds", publishPointClouds);
 
             // Populate configuration map
             motionCaptureCfg["hostname"] = motionCaptureHostname;
@@ -50,9 +51,13 @@ class MotionCaptureNode
             }
 
             // Create publishers
-            pointCloudMotionCapturePub = nh.advertise<motion_capture_ros_msgs::PointCloud>("mocap/unlabeled_point_cloud", 1);
+            if (publishPointClouds){
+                pointCloudMotionCapturePub = nh.advertise<motion_capture_ros_msgs::PointCloud>("mocap/unlabeled_point_cloud", 1);
+                ROS_INFO("Point cloud publisher created.");
+            } else {
+                ROS_INFO("NOT publishing Point Cloud.");
+            }
 
-            ROS_INFO("Point cloud publisher created.");
         }
 
         ~MotionCaptureNode()
@@ -90,25 +95,41 @@ class MotionCaptureNode
 
             
             // Publish body poses
-            if (ros::Time::now() - last_log_time_ > ros::Duration(1.0)) {
-                last_log_time_ = ros::Time::now();
-                ROS_INFO(
-                    "Motion Capture Status:\n"
-                    "  Time: %.3f\n"
-                    "  Latency: %.3f seconds\n"
-                    "  Bodies: %zu\n"
-                    "  Point Cloud Points: %d",
-                    time.toSec(),
-                    total_latency,
-                    mocap_->rigidBodies().size(),
-                    int(mocap_->pointCloud().rows())
-                );
-            }
             for (const auto &iter : mocap_->rigidBodies()){
                 publishBodyPose(iter.second, time);
             }
+            if (publishPointClouds){
+                publishPointCloud(mocap_->pointCloud(), time);
+            }
 
-            publishPointCloud(mocap_->pointCloud(), time);
+            // Log
+            if (ros::Time::now() - last_log_time_ > ros::Duration(1.0)) {
+                last_log_time_ = ros::Time::now();
+                if (publishPointClouds){
+                    ROS_INFO(
+                        "Motion Capture Status:\n"
+                        "  Time: %.3f\n"
+                        "  Latency: %.3f seconds\n"
+                        "  Bodies: %zu\n"
+                        "  Point Cloud Points: %d",
+                        time.toSec(),
+                        total_latency,
+                        mocap_->rigidBodies().size(),
+                        int(mocap_->pointCloud().rows())
+                    );
+                } else {
+                    ROS_INFO(
+                        "Motion Capture Status:\n"
+                        "  Time: %.3f\n"
+                        "  Latency: %.3f seconds\n"
+                        "  Bodies: %zu\n"
+                        "  Point Cloud Points: NOT PUBLISHED",
+                        time.toSec(),
+                        total_latency,
+                        mocap_->rigidBodies().size()
+                    );
+                }
+            }
         }
 
     private:
@@ -173,6 +194,7 @@ class MotionCaptureNode
         std::string motionCaptureType;
         std::string motionCaptureInterfaceIP;
         int motionCapturePortCommand;
+        bool publishPointClouds = true;
 
         ros::Publisher bodyMotionCapturePub;
         ros::Publisher pointCloudMotionCapturePub;
