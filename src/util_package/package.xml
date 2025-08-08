@@ -11,10 +11,12 @@
 
   <build_depend>rospy</build_depend>
   <build_depend>geometry_msgs</build_depend>
+  <build_depend>motion_capture_ros_msgs</build_depend>
   <build_depend>agiros_msgs</build_depend>
 
   <exec_depend>rospy</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>agiros_msgs</exec_depend>
+  <exec_depend>motion_capture_ros_msgs</exec_depend>
 
 </package>
