@@ -1,6 +1,6 @@
 <launch>
     <arg name="quad_name" default="volley_drone"/>
-    <node pkg="util_package" type="topic_to_zqm_bridge.py" name="topic_to_zqm_bridge" output="screen">
+    <node pkg="util_package" type="state_to_zqm_bridge.py" name="state_estimate_ros_zmq_bridge" output="screen">
         <param name="~quad_name" value="$(arg quad_name)"/>
     </node>
 </launch>
