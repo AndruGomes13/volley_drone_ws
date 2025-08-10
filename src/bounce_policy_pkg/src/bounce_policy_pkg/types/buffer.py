@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Deque, List, TypeVar, Generic
-import bounce_policy_package.observation.observation_backend as bc
+import bounce_policy_pkg.observation.observation_backend as bc
 T = TypeVar("T")                              # payload PyTree (arrays only)
 
 @bc.dataclass

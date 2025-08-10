@@ -1,10 +1,10 @@
 from typing import Optional, Type
 
 from dataclasses import dataclass
-from bounce_policy_package.observation.observation import DroneViconObs, DroneBallRelativeViconObs, Observation, ObservationType
-from bounce_policy_package.observation.observation_data import ObservationData
-from bounce_policy_package.types.ball import BallState
-from bounce_policy_package.types.drone import DroneState
+from bounce_policy_pkg.observation.observation import DroneViconObs, DroneBallRelativeViconObs, Observation, ObservationType
+from bounce_policy_pkg.observation.observation_data import ObservationData
+from bounce_policy_pkg.types.ball import BallState
+from bounce_policy_pkg.types.drone import DroneState
 import numpy as np
 
 def populate_observation(observation_class: Type[Observation], data: ObservationData) -> Observation:

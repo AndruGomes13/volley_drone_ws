@@ -11,10 +11,10 @@ from typing import Deque, Optional, Protocol
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from bounce_policy_package.observation.observation_data import ObservationData
-import bounce_policy_package.utilities as utilities
-from bounce_policy_package.types.drone import DroneState
-from bounce_policy_package.types.ball import BallState
+from bounce_policy_pkg.observation.observation_data import ObservationData
+import bounce_policy_pkg.utilities as utilities
+from bounce_policy_pkg.types.drone import DroneState
+from bounce_policy_pkg.types.ball import BallState
 
 # --- States ---
 class StateMachineState(Enum):

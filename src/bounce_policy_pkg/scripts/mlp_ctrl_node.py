@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import psutil
-from policy_package.mlp_ctrl import MLPPilot
+from bounce_policy_pkg.mlp_ctrl import MLPPilot
 import rospy
 import subprocess
 import signal, sys
@@ -39,23 +39,33 @@ def main():
     
     rospy.init_node("mlp_ctrl_node", anonymous=True)
     policy_path = str(rospy.get_param("~policy_path"))
-    drone_only = bool(rospy.get_param("~drone_only"))
+    bounce_policy_name = str(rospy.get_param("~bounce_policy_name", ""))
+    recovery_policy_name = str(rospy.get_param("~recovery_policy_name", ""))
     quad_name = str(rospy.get_param("~quad_name"))
     
     if not policy_path:
         rospy.logerr("Policy path not provided. Please set the ~policy_path parameter.")
         return
-    if not drone_only:
-        rospy.logerr("Drone-only mode not set. Please set the ~drone_only parameter to True.")
+    
+    if not bounce_policy_name:
+        rospy.logerr("Bounce policy name not provided. Please set the ~bounce_policy_name parameter.")
         return
     
+    if not recovery_policy_name:
+        rospy.logwarn("Recovery policy name not provided. Not using recovery policy.")
+        recovery_policy_name = None
     
     pilot = MLPPilot(
         quad_name=quad_name,
         policy_sampling_frequency=100,  # Hz
-        jax_policy_path=Path(policy_path),
-        drone_only=drone_only  # Set to True for drone-only mode
+        policy_path=Path(policy_path),
+        bounce_policy_path=bounce_policy_name,
+        recovery_policy_path=recovery_policy_name if recovery_policy_name else None
     )
+    
+    child_processes.append(pilot.bounce_policy.inference_server.server)
+    if recovery_policy_name:
+        child_processes.append(pilot.recovery_policy.inference_server.server)
     
     rate = rospy.Rate(300)
     while not rospy.is_shutdown():
@@ -63,7 +73,6 @@ def main():
         rate.sleep()
         
         
-    child_processes.append(pilot.inference_server.server)
     rospy.loginfo("MLP Control Node initialized and running.")
     rospy.spin()
         

@@ -40,7 +40,7 @@ try:
       
 except ModuleNotFoundError: # ➋ Pure-NumPy fallback
     import numpy as xp
-    import bounce_policy_package.observation.numpy_jax_shim as numpy_jax_shim
+    import bounce_policy_pkg.observation.numpy_jax_shim as numpy_jax_shim
     
     dataclass = numpy_jax_shim.dataclass
     field = numpy_jax_shim.field

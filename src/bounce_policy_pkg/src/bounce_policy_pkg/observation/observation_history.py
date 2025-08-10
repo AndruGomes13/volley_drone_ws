@@ -2,8 +2,8 @@ from dataclasses import fields
 import math
 from typing import TYPE_CHECKING, Dict, Generic, Protocol, Type, TypeVar, get_type_hints
 from typing_extensions import Self
-from bounce_policy_package.types.buffer import HistBuf
-import bounce_policy_package.observation.observation_backend as bc
+from bounce_policy_pkg.types.buffer import HistBuf
+import bounce_policy_pkg.observation.observation_backend as bc
 
 if TYPE_CHECKING:
     from observation import Observation

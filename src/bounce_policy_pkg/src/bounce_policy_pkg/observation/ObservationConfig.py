@@ -1,6 +1,6 @@
 
 
-from bounce_policy_package.observation.observation import ObservationType
+from bounce_policy_pkg.observation.observation import ObservationType
 from pydantic import BaseModel
 from typing import Dict
 
@@ -21,8 +21,5 @@ class ObservationConfig(BaseModel):
             "previous_action": 4,
         }
     
-    # --- Critic ---
-    critic_observation_type: ObservationType = ObservationType.DRONE_STATE
-    history_length_critic: Dict[str, int] = {}
     
     

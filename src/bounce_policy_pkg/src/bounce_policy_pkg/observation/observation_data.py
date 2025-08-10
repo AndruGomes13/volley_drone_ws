@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from bounce_policy_package.types.ball import BallState
-from bounce_policy_package.types.drone import DroneState
+from bounce_policy_pkg.types.ball import BallState
+from bounce_policy_pkg.types.drone import DroneState
 import numpy as np
 
 @dataclass

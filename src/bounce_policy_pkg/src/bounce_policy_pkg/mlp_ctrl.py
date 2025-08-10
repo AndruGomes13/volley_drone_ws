@@ -6,16 +6,16 @@ from typing import Deque, Optional, Tuple
 import threading
 import numpy as np
 from agiros_msgs.msg import QuadState, Command, PolicyState
-from bounce_policy_package.state_machine import StateMachine, LoggingLevel, StateMachineState, EventLoop, PolicyStateUpdateEvent, ArmRequestEvent, StopRequestEvent
-from bounce_policy_package.action.policy_to_command import ActionModelConfig, PolicyToNormalizedThrustAndBodyRate
-from bounce_policy_package.observation.ObservationConfig import ObservationConfig
-from bounce_policy_package.observation.observation import DroneViconObs
-from bounce_policy_package.observation.observation_data import ObservationData
-from bounce_policy_package.observation.observation_history import make_history_cls
-from bounce_policy_package.observation.observation_populator import get_observation_class, populate_observation
-from bounce_policy_package.inference_server.PolicyServerInterface import PolicyServerInterface
-from bounce_policy_package.types.ball import BallState
-from bounce_policy_package.types.drone import DroneState
+from bounce_policy_pkg.state_machine import StateMachine, LoggingLevel, StateMachineState, EventLoop, PolicyStateUpdateEvent, ArmRequestEvent, StopRequestEvent
+from bounce_policy_pkg.action.policy_to_command import ActionModelConfig, PolicyToNormalizedThrustAndBodyRate
+from bounce_policy_pkg.observation.ObservationConfig import ObservationConfig
+from bounce_policy_pkg.observation.observation import DroneViconObs
+from bounce_policy_pkg.observation.observation_data import ObservationData
+from bounce_policy_pkg.observation.observation_history import make_history_cls
+from bounce_policy_pkg.observation.observation_populator import get_observation_class, populate_observation
+from bounce_policy_pkg.inference_server.PolicyServerInterface import PolicyServerInterface
+from bounce_policy_pkg.types.ball import BallState
+from bounce_policy_pkg.types.drone import DroneState
 from std_msgs.msg import String, Bool, Empty
 import rospy
 import time
@@ -30,8 +30,8 @@ class PolicyInterface:
         self.SAMPLING_FREQUENCY = sampling_frequency
         
         config_path = policy_path / "run_config.json"
-        checkpoint_path = self._get_checkpoint_path(config_path)
-        action_config, observation_config = self._parse_config(checkpoint_path)
+        checkpoint_path = self._get_checkpoint_path(policy_path)
+        action_config, observation_config = self._parse_config(config_path)
         
         # --- Action Model ---
         self.policy_to_command = PolicyToNormalizedThrustAndBodyRate(action_config)
@@ -73,9 +73,9 @@ class PolicyInterface:
     # --- Utility Methods ---
     def _get_checkpoint_path(self, policy_path: Path) -> Path:
         """
-        Expects there is only a single checkpoint directory in the jax_policy_path. No name convention is expected.
+        Expects there is only a single checkpoint directory in the policy_path. No name convention is expected.
         """
-        assert policy_path.is_dir(), f"JAX policy path {policy_path} is not a directory."
+        assert policy_path.is_dir(), f"Policy path {policy_path} is not a directory."
         checkpoint_dirs = [d for d in policy_path.iterdir() if d.is_dir()]
         assert len(checkpoint_dirs) == 1, f"Expected exactly one checkpoint directory in {policy_path}, found {len(checkpoint_dirs)}."
         return checkpoint_dirs[0]
@@ -157,17 +157,19 @@ class Effects:
     def logging(self, msg:str, level:LoggingLevel = LoggingLevel.INFO):
         self.p._effect_logging(msg, level)
         
-ORIGIN_OFFSET = np.array([0.0, 0.0, 1.2])  # Offset to origin in the world frame
+ORIGIN_OFFSET = np.array([0.0, 0.0, 1.3])  # Offset to origin in the world frame
 
 class MLPPilot:
     """
     MLP Pilot class that manages the policy execution, state management, and communication with the ROS system.
     It uses the PolicyInterface to interact with the JAX policy server and manages the drone and ball states.
     """  
-    def __init__(self, quad_name: str, policy_sampling_frequency: float, bounce_policy_path: Path, recovery_policy_path: Optional[Path] = None):
+    def __init__(self, quad_name: str, policy_sampling_frequency: float, policy_path: Path, bounce_policy_path: Path, recovery_policy_path: Optional[Path] = None):
         self.quad_name = quad_name
         
         # --- Policy Paths ---
+        bounce_policy_path = policy_path / bounce_policy_path
+        recovery_policy_path = policy_path / recovery_policy_path if recovery_policy_path else None
         self.bounce_policy = PolicyInterface(bounce_policy_path, policy_sampling_frequency)
         self.recovery_policy = PolicyInterface(recovery_policy_path, policy_sampling_frequency) if recovery_policy_path else None
         
@@ -218,6 +220,10 @@ class MLPPilot:
         t = rospy.Time.now().to_sec()
         drone_state = DroneState.from_msg(msg.quad_state)
         ball_state = BallState.from_msg(msg.ball_state)
+        
+        # Subtract offset
+        drone_state.position = drone_state.position - np.array(ORIGIN_OFFSET)
+        # ball.position = drone_state.position - np.array(ORIGIN_OFFSET) #TODO: Re-enable this for real life. Atm the mojuco already outputs in the origin offset frame.
         
         # Parse event
         state_event = PolicyStateUpdateEvent(

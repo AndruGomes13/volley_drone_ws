@@ -3,7 +3,7 @@ from enum import Enum
 import math
 from typing import TYPE_CHECKING
 from typing_extensions import Annotated, Self
-import bounce_policy_package.observation.observation_backend as bc
+import bounce_policy_pkg.observation.observation_backend as bc
 
 if TYPE_CHECKING:
     from environments.drone_env_refactor_hover_only.types.augmented_pipeline_state import AugmentedPipelineState
