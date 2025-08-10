@@ -6,6 +6,10 @@ import rospy
 from agiros_msgs.msg import QuadState
 from motion_capture_ros_msgs.msg import PointCloud
 from geometry_msgs.msg import PointStamped
+
+STATE_ESTIMATE_IPC = "ipc:///tmp/state_estimate.sock"
+POINT_CLOUD_IPC = "ipc:///tmp/point_cloud.sock"
+
 @dataclass
 class StateEstimate:
     position: np.ndarray
@@ -47,11 +51,10 @@ class Point:
 class StateEstimatePublisher:
     """ Will use ZQM to publish state estimates to the ROS node."""
     def __init__(self):
-        PORT = 5555
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.PUB)
-        self.socket.bind(f"tcp://*:{PORT}")
-        
+        self.socket.bind(STATE_ESTIMATE_IPC)
+
     def publish_state_estimate(self, state_estimate: StateEstimate):
         """Publish a state estimate to the server."""
         message = {
@@ -64,10 +67,9 @@ class StateEstimatePublisher:
 class MotionCapturePointCloudClient:
     """ Will use ZQM to receive the point cloud data from the ROS node."""
     def __init__(self):
-        PORT = 5556
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.SUB)
-        self.socket.connect(f"tcp://localhost:{PORT}")
+        self.socket.connect(POINT_CLOUD_IPC)
         self.socket.setsockopt_string(zmq.SUBSCRIBE, "")
         
     def receive_point_cloud(self) -> list[Point]:
