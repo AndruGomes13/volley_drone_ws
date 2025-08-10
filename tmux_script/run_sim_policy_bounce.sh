@@ -21,12 +21,9 @@ tmux send-keys -t $SESSION:0.1 "$INIT_SETUP" C-m
 tmux send-keys -t $SESSION:0.1 "roslaunch agiros agisim_volley.launch quad_name:=volley_drone"
 
 tmux send-keys -t $SESSION:0.2 "$INIT_SETUP" C-m
-tmux send-keys -t $SESSION:0.2 "roslaunch bounce_policy_pkg policy_node.launch quad_name:=volley_drone bounce_policy_dir:=bounce_policy recovery_policy_dir:=recovery_policy" 
+tmux send-keys -t $SESSION:0.2 "roslaunch bounce_policy_pkg policy_node.launch quad_name:=volley_drone recovery_policy_name:=recovery_policy bounce_policy_name:=bounce_policy" 
 
 tmux send-keys -t $SESSION:0.3 "$INIT_SETUP" C-m
-# tmux send-keys -t $SESSION:0.3 "echo 'NOTE: In order to run the bounce policy, you need to have a separate process running the Mujoco Hardware in the Loop simulation. \n Furthermore, you also need to run the zqm bridge node on that same machine. This bridge node is responsible for sending the drone state to the policy node and receiving the ball state from the Mujoco simulation.'" C-m
-# tmux send-keys -t $SESSION:0.3 "# NOTE: In order to run the bounce policy, you need to have a separate process running the Mujoco Hardware in the Loop simulation." C-m
-# tmux send-keys -t $SESSION:0.3 "# Furthermore, you also need to run the zqm bridge node on that same machine. This bridge node is responsible for sending the drone state to the policy node and receiving the ball state from the Mujoco simulation." C-m
 tmux send-keys -t $SESSION:0.3 "clear; printf '%b\n' '\n NOTE: In order to run the bounce policy, you need to have a separate process running the Mujoco Hardware in the Loop simulation.\n\nFurthermore, you also need to run the zqm bridge node on that same machine. This bridge node is responsible for sending the drone state to the policy node and receiving the ball state from the Mujoco simulation.\n'" C-m
 
 tmux select-pane -t $SESSION:0.0
