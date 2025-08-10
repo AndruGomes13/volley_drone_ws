@@ -1,0 +1,11 @@
+<launch>
+    <arg name="quad_name"/>
+    <arg name="policy_dir_name"/>
+    <arg name="drone_only" default="true"/>
+
+    <node pkg="policy_package" type="mlp_ctrl_node.py" name="mlp_ctrl_node" output="screen">
+        <param name="policy_path" value="$(find policy_package)/resources/policies/$(arg policy_dir_name)"/>
+        <param name="drone_only" value="$(arg drone_only)"/>
+        <param name="quad_name" value="$(arg quad_name)"/>
+    </node>
+</launch>
