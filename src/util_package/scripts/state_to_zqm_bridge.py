@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass
+import time
+from typing import Optional
 import numpy as np
 import zmq
 import rospy
@@ -7,8 +9,16 @@ from agiros_msgs.msg import QuadState
 from motion_capture_ros_msgs.msg import PointCloud
 from geometry_msgs.msg import PointStamped
 
+USE_IPC = False  # If False, use TCP
+
 STATE_ESTIMATE_IPC = "ipc:///tmp/state_estimate.sock"
 POINT_CLOUD_IPC = "ipc:///tmp/point_cloud.sock"
+
+STATE_ESTIMATE_TCP = "tcp://*:5555"
+POINT_CLOUD_TCP = "tcp://localhost:5556"
+
+STATE_ESTIMATE_ADDR = STATE_ESTIMATE_IPC if USE_IPC else STATE_ESTIMATE_TCP
+POINT_CLOUD_ADDR = POINT_CLOUD_IPC  if USE_IPC else POINT_CLOUD_TCP
 
 @dataclass
 class StateEstimate:
@@ -51,9 +61,12 @@ class Point:
 class StateEstimatePublisher:
     """ Will use ZQM to publish state estimates to the ROS node."""
     def __init__(self):
-        self.context = zmq.Context()
+        self.context = zmq.Context(io_threads=2)
         self.socket = self.context.socket(zmq.PUB)
-        self.socket.bind(STATE_ESTIMATE_IPC)
+        self.socket.setsockopt(zmq.SNDHWM, 1)
+        self.socket.setsockopt(zmq.IMMEDIATE, 1)
+        self.socket.setsockopt(zmq.LINGER, 0)
+        self.socket.bind(STATE_ESTIMATE_ADDR)
 
     def publish_state_estimate(self, state_estimate: StateEstimate):
         """Publish a state estimate to the server."""
@@ -67,22 +80,26 @@ class StateEstimatePublisher:
 class MotionCapturePointCloudClient:
     """ Will use ZQM to receive the point cloud data from the ROS node."""
     def __init__(self):
-        self.context = zmq.Context()
+        self.context = zmq.Context(io_threads=2)
         self.socket = self.context.socket(zmq.SUB)
-        self.socket.connect(POINT_CLOUD_IPC)
         self.socket.setsockopt_string(zmq.SUBSCRIBE, "")
+        self.socket.setsockopt(zmq.RCVHWM, 1)
+        self.socket.setsockopt(zmq.CONFLATE, 1)
+        self.socket.setsockopt(zmq.RCVTIMEO, 0)
+        self.socket.connect(POINT_CLOUD_ADDR)
         
-    def receive_point_cloud(self) -> list[Point]:
+    def receive_point_cloud(self) -> Optional[list[Point]]:
         """Receive a point cloud from the server."""
         try:
-            message = self.socket.recv_json(flags=zmq.NOBLOCK)
+            message = self.socket.recv_json()
+            # message = self.socket.recv_json(flags=zmq.NOBLOCK)
             if message["topic"] == "/mocap_point_cloud":
                 return [Point.from_dict(point) for point in message["data"]]
         except zmq.Again:
-            return []
+            return None
         except Exception as e:
             print(f"Error receiving point cloud: {e}")
-            return []
+            return None
 
 def get_state_estimate_callback(publisher: StateEstimatePublisher):
     def state_estimate_callback(msg: QuadState):
@@ -100,9 +117,12 @@ def get_state_estimate_callback(publisher: StateEstimatePublisher):
 def get_point_cloud_pub_callback(client: MotionCapturePointCloudClient, publisher: rospy.Publisher):
     def point_cloud_pub_callback(event):
         """Callback function to convert PointCloud to list of Points."""
-        point_cloud: list[Point] = client.receive_point_cloud()
+        point_cloud: Optional[list[Point]] = client.receive_point_cloud()
         if point_cloud is None:
+            rospy.logwarn("No point cloud data received.")
             return
+        if point_cloud == []:
+            rospy.loginfo("Received empty point cloud.")
         
         msg = PointCloud()
         t = rospy.Time.now()
@@ -119,27 +139,43 @@ def get_point_cloud_pub_callback(client: MotionCapturePointCloudClient, publishe
             msg.points.append(point_msg)
 
         publisher.publish(msg)
+        # rospy.loginfo(f"Published point cloud with {len(msg.points)} points at time {msg.t}")
+        # rospy.loginfo_throttle(1, f"Published point cloud with {len(msg.points)} points at time {msg.t}")
     return point_cloud_pub_callback
 
-
-POINT_CLOUD_HZ = 500
 if __name__ == "__main__":
     rospy.init_node("state_estimate_ros_zmq_bridge")
     quad_name = rospy.get_param("~quad_name", "volley_drone")
     
-    
-    
     publisher = StateEstimatePublisher()
     state_estimate_callback = get_state_estimate_callback(publisher)
-    state_estimate_sub = rospy.Subscriber(f"/{quad_name}/agiros_pilot/state", QuadState, state_estimate_callback)
+    state_estimate_sub = rospy.Subscriber(f"/{quad_name}/agiros_pilot/state", QuadState, state_estimate_callback, queue_size=1,
+    tcp_nodelay=True)
 
     point_cloud_client = MotionCapturePointCloudClient()
-    state_estimate_pub = rospy.Publisher(f"/mocap/unlabeled_point_cloud", PointCloud, queue_size=10)
+    state_estimate_pub = rospy.Publisher(f"/mocap/unlabeled_point_cloud", PointCloud, queue_size=1, latch=False)
     point_cloud_pub_callback = get_point_cloud_pub_callback(point_cloud_client, state_estimate_pub)
-    rospy.Timer(rospy.Duration.from_sec(1/POINT_CLOUD_HZ), point_cloud_pub_callback)
+    
+    POINT_CLOUD_HZ = 300
+    rate = rospy.Rate(POINT_CLOUD_HZ)
+    t = time.perf_counter()
+    i=0
+    N = 300
+    while not rospy.is_shutdown() and not point_cloud_client.socket.closed:
+        i += 1
+        if i % N == 0:
+            d = (time.perf_counter() - t) / N
+            print(f"Avg freq: {1/d:.4f} Hz")
+            t = time.perf_counter()
 
-    rospy.spin()  # Keep the node running to listen for messages
-    publisher.socket.close()
-    publisher.context.term()  # Clean up ZMQ context
-    rospy.loginfo("State estimate publisher node has been shut down.")
+        point_cloud_pub_callback(None)
+        rate.sleep()
+
+    
+    # rospy.Timer(rospy.Duration.from_sec(1/POINT_CLOUD_HZ), point_cloud_pub_callback)
+
+    # rospy.spin()  # Keep the node running to listen for messages
+    # publisher.socket.close()
+    # publisher.context.term()  # Clean up ZMQ context
+    # rospy.loginfo("State estimate publisher node has been shut down.")
     
