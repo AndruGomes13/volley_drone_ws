@@ -1,0 +1,13 @@
+<launch>
+    <arg name="mocap_topic" default="/mocap/volley_drone/pose"/>
+    <arg name="state_topic" default="/volley_drone/agiros_pilot/state"/>
+    <arg name="state_csv" default="~/catkin_ws/ros_logs/state_log.csv"/>
+    <arg name="mocap_csv" default="~/catkin_ws/ros_logs/mocap_log.csv"/>
+
+    <node pkg="util_package" type="state_mocap_recorder.py" name="state_mocap_recorder" output="screen" respawn="false">
+        <param name="~mocap_topic" value="$(arg mocap_topic)"/>
+        <param name="~state_topic" value="$(arg state_topic)"/>
+        <param name="~state_csv" value="$(arg state_csv)"/>
+        <param name="~mocap_csv" value="$(arg mocap_csv)"/>
+    </node>
+</launch>
