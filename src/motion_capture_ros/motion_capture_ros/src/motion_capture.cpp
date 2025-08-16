@@ -88,8 +88,11 @@ class MotionCaptureNode
             }
             if (total_latency > 0.01){
                 ROS_ERROR("Motion capture latency is high (%.3f seconds).", total_latency);
+                return;
+                
             } else if (total_latency < 0){
                 ROS_ERROR("Motion capture latency is negative (%.3f seconds).", total_latency);
+                return;
             }
             time -= ros::Duration(total_latency);
 
