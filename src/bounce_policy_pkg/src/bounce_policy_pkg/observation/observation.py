@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 class StrEnum(str, Enum):
     pass
 
+Vec1 = Annotated[bc.xp.ndarray, (1,)]
 Vec3  = Annotated[bc.xp.ndarray, (3,)]
 Vec4  = Annotated[bc.xp.ndarray, (4,)]
 Quat  = Annotated[bc.xp.ndarray, (4,)]
@@ -110,7 +111,9 @@ class DroneBallRelativeViconObs(Observation):
     """Current observation of the drone environment."""
     # --- Drone ---
     drone_position: Vec3
-    drone_orientation: Quat
+    g_vec: Vec3
+    sin_yaw: Vec1
+    cos_yaw: Vec1
     drone_velocity: Vec3
     drone_body_rate: Vec3
     previous_action: Vec4
@@ -121,14 +124,14 @@ class DroneBallRelativeViconObs(Observation):
     
     
 if __name__ == "__main__":
+    pass
+    # obs = FullObservationWithViconFlag(
+    #     drone_position=bc.xp.zeros((3,)),
+    #     drone_orientation=bc.xp.zeros((4,)),
+    #     drone_velocity=bc.xp.zeros((3,)),
+    #     drone_body_rate=bc.xp.zeros((3,)),
+    #     previous_action=bc.xp.zeros((4,))
+    # )
     
-    obs = FullObservationWithViconFlag(
-        drone_position=bc.xp.zeros((3,)),
-        drone_orientation=bc.xp.zeros((4,)),
-        drone_velocity=bc.xp.zeros((3,)),
-        drone_body_rate=bc.xp.zeros((3,)),
-        previous_action=bc.xp.zeros((4,))
-    )
     
-    
-    zero = FullObservationWithViconFlag.generate_zero()
+    # zero = FullObservationWithViconFlag.generate_zero()

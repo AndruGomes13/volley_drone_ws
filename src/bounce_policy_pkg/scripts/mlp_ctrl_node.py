@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from pathlib import Path
+import time
 
 import psutil
 from bounce_policy_pkg.mlp_ctrl import MLPPilot
@@ -66,7 +67,8 @@ def main():
     child_processes.append(pilot.bounce_policy.inference_server.server)
     if recovery_policy_name:
         child_processes.append(pilot.recovery_policy.inference_server.server)
-    
+        
+    time.sleep(1)  # Allow time for the inference server to start
     rate = rospy.Rate(300)
     while not rospy.is_shutdown():
         pilot.tick()

@@ -1,0 +1,1 @@
+{"network_factory_kwargs": {"policy_hidden_layer_sizes": [256, 256], "value_hidden_layer_sizes": [256, 256], "policy_obs_key": "actor", "value_obs_key": "critic"}, "normalize_observations": true, "observation_size": {"actor": 84, "critic": 44}, "action_size": 4}

@@ -13,15 +13,17 @@ from geometry_msgs.msg import Vector3
 G = 9.81  # Gravitational constant
 DEG = np.pi / 180  # Degrees to radians conversion
 Tuple3 = Tuple[float, float, float]
+Tuple4 = Tuple[float, float, float, float]
 
 # --- Config ----
-
 class ActionModelConfig(BaseModel):    
     # --- Drone parameters ---
     thrust_to_weight_ratio: float = 4.0
     
     # --- Policy to Command ---
     max_body_rate: Tuple3 = (1022*DEG, 1022*DEG, 524*DEG) # Shape (3,) for roll, pitch, yaw
+    max_command_rate_change: Tuple4 = (4*G/100, 20*DEG, 20*DEG, 20*DEG)
+    use_command_rate_change_clipping: bool = False
 
 class PolicyToCommandMapper(ABC):
     def __init__(self, config: ActionModelConfig):

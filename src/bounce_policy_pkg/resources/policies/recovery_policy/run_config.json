@@ -1,7 +1,7 @@
 {
     "action_repeat": 1,
-    "run_name": "brax_ppo_20250810_185742",
-    "timestamp": "20250810_185742",
+    "run_name": "brax_ppo_20250811_005823",
+    "timestamp": "20250811_005823",
     "env": {
         "backend": "mjx",
         "physics_steps_per_control_step": 1,
@@ -150,16 +150,16 @@
         },
         "gameplay_config": {
             "zones_drone_playzone_min": {
-                "kind": "linear",
+                "kind": "const_e",
                 "start": [
                     -1.0,
                     -1.0,
                     -1.0
                 ],
                 "end": [
-                    -2.0,
-                    -2.0,
-                    -2.0
+                    -1.5,
+                    -1.5,
+                    -1.5
                 ],
                 "p_range": [
                     0.3,
@@ -167,16 +167,16 @@
                 ]
             },
             "zones_drone_playzone_max": {
-                "kind": "linear",
+                "kind": "const_e",
                 "start": [
                     1.0,
                     1.0,
                     1.0
                 ],
                 "end": [
-                    2.0,
-                    2.0,
-                    2.0
+                    1.5,
+                    1.5,
+                    1.5
                 ],
                 "p_range": [
                     0.3,
@@ -218,18 +218,18 @@
                 0.0
             ],
             "reset_drone_orientation_rand": {
-                "kind": "linear",
+                "kind": "const_e",
                 "start": 0.3490658503988659,
-                "end": 2.9670597283903604,
+                "end": 1.5707963267948966,
                 "p_range": [
                     0.3,
                     0.7
                 ]
             },
             "reset_drone_ang_vel_rand": {
-                "kind": "linear",
+                "kind": "const_e",
                 "start": 0.3490658503988659,
-                "end": 1.5707963267948966,
+                "end": 1.0471975511965976,
                 "p_range": [
                     0.3,
                     0.7
@@ -243,8 +243,8 @@
                     0.6
                 ],
                 "end": [
-                    1.5,
-                    1.5,
+                    1.0,
+                    1.0,
                     1.0
                 ],
                 "p_range": [
@@ -312,14 +312,14 @@
             "reset_ball_method_probabilities": {
                 "kind": "const",
                 "start": [
-                    0.0,
                     1.0,
+                    0.0,
                     0.0
                 ],
                 "end": null,
                 "p_range": [
-                    0.15,
-                    0.5
+                    0.0,
+                    1.0
                 ]
             },
             "reset_ball_drone_drone_drop_height_offset_from_drone": 2,
@@ -414,7 +414,7 @@
             ]
         },
         "dr_config": {
-            "use_domain_randomization": true,
+            "use_domain_randomization": false,
             "density_mult": {
                 "kind": "const_e",
                 "start": [
@@ -445,7 +445,7 @@
             "rotor_tau_variation": {
                 "kind": "const_e",
                 "start": 0.0,
-                "end": 0.1,
+                "end": 0.2,
                 "p_range": [
                     0.0,
                     1.0
@@ -490,15 +490,15 @@
                 "drone_orientation": 3,
                 "drone_velocity": 3,
                 "drone_body_rate": 3,
-                "previous_action": 20
+                "previous_action": 3
             },
             "critic_observation_type": "drone_state",
             "history_length_critic": {}
         },
         "mocap_config_drone": {
             "delay": 0.0,
-            "position_noise_level": 0.005,
-            "attitude_noise_level": 0.017453292519943295,
+            "position_noise_level": 0.01,
+            "attitude_noise_level": 0.03490658503988659,
             "occlusion_probability": 0.0,
             "occlusion_duration_range": 0
         },
@@ -509,12 +509,12 @@
             "occlusion_probability": 0.0,
             "occlusion_duration_range": 0
         },
-        "action_delay": 0.02,
-        "action_history": 2,
+        "action_delay": 0.04,
+        "action_history": 4,
         "collision_t_window": 0.1,
         "check_collision": false,
         "action_repeat": 1,
-        "action_delay_discrete": 2
+        "action_delay_discrete": 4
     },
     "network": {
         "policy_hidden_layer_sizes": [

@@ -21,6 +21,8 @@ import rospy
 import time
 import geometry_msgs.msg as geometry_msgs
 
+
+DEG= np.pi / 180  # Degrees to radians conversion
 class PolicyInterface:
     """
     An interface for the policy which configures the action and observation models, initializes the policy server, and manages the state of the policy and observation history.
@@ -31,11 +33,11 @@ class PolicyInterface:
         
         config_path = policy_path / "run_config.json"
         checkpoint_path = self._get_checkpoint_path(policy_path)
-        action_config, observation_config = self._parse_config(config_path)
+        self.action_config, observation_config = self._parse_config(config_path)
         
         # --- Action Model ---
-        self.policy_to_command = PolicyToNormalizedThrustAndBodyRate(action_config)
-        
+        self.policy_to_command = PolicyToNormalizedThrustAndBodyRate(self.action_config)
+
         # --- Observation Model ---
         self.observation_model = get_observation_class(observation_config.actor_observation_type)
         self.observation_history_class = make_history_cls( 
@@ -52,6 +54,9 @@ class PolicyInterface:
             observation_shape=self.OBSERVATION_SHAPE
         )
         
+        # --- Buffer ---
+        self.last_command: Optional[Command] = None 
+        
         self._check_inference_time()
         
     def push_observation(self, observation_data: ObservationData):
@@ -67,7 +72,43 @@ class PolicyInterface:
         """
         obs = self.observation_history.to_array()
         policy_request = self.inference_server.run_inference(obs)
-        command = self.policy_to_command.map(policy_request, rospy.Time.now().to_sec())
+        time = rospy.Time.now().to_sec()
+        command = self.policy_to_command.map(policy_request, time)
+        
+        ## TODO: Temp clipping 
+            
+        # if last_policy_request is not None and self.action_config.use_command_rate_change_clipping:
+        if self.last_command is None or time - self.last_command.t > 0.1:
+            rospy.logwarn("No last command available for clipping. Not clipping.")
+            self.last_command = command
+            return command, policy_request
+        
+        if self.action_config.use_command_rate_change_clipping:
+            # Clip the command to the last policy request
+            last_command = self.last_command
+            clip = np.array(self.action_config.max_command_rate_change) * 0.5
+            delta_thrust = np.clip(
+                command.collective_thrust - last_command.collective_thrust,
+                -clip[0],
+                clip[0]
+            )
+            delta_body_rate_command = geometry_msgs.Vector3(
+                np.clip(command.bodyrates.x - last_command.bodyrates.x, -clip[1], clip[1]),
+                np.clip(command.bodyrates.y - last_command.bodyrates.y, -clip[2], clip[2]),
+                np.clip(command.bodyrates.z - last_command.bodyrates.z, -clip[3], clip[3])
+            )
+            print(f"Delta thrust: {delta_thrust}, Delta body rate: {delta_body_rate_command}")
+        
+            print(f"Command: {command.collective_thrust}, {command.bodyrates.x}, {command.bodyrates.y}, {command.bodyrates.z}")
+            command.collective_thrust = last_command.collective_thrust + delta_thrust
+            command.bodyrates = geometry_msgs.Vector3(
+                last_command.bodyrates.x + delta_body_rate_command.x,
+                last_command.bodyrates.y + delta_body_rate_command.y,
+                last_command.bodyrates.z + delta_body_rate_command.z
+            )
+            print(f"Clipped command: {command.collective_thrust}, {command.bodyrates.x}, {command.bodyrates.y}, {command.bodyrates.z}")        
+        
+        self.last_command = command
         return command, policy_request
 
     # --- Utility Methods ---
@@ -154,10 +195,12 @@ class Effects:
         return self.p._effect_go_to_origin()
     def push_observation(self, observation_data: ObservationData):
         return self.p._effect_push_observation(observation_data)
+    def reset_observation(self):
+        return self.p._effect_reset_observation()
     def logging(self, msg:str, level:LoggingLevel = LoggingLevel.INFO):
         self.p._effect_logging(msg, level)
         
-ORIGIN_OFFSET = np.array([0.0, 0.0, 1.3])  # Offset to origin in the world frame
+ORIGIN_OFFSET = np.array([0.0, 0.0, 1.2])  # Offset to origin in the world frame
 
 class MLPPilot:
     """
@@ -177,15 +220,16 @@ class MLPPilot:
         self.SAMPLING_FREQUENCY = policy_sampling_frequency
         self.START_CHECK_WINDOW_DURATION = 1.0
         
-        # --- Start Pub/Sub ---
-        self.init_subscriptions()
-        self.init_publishers()
-        self.init_timers()
         
         # --- State Variables ---  
         effects = Effects(self)          
         self.state_machine = StateMachine(effects=effects, sampling_frequency=self.SAMPLING_FREQUENCY, start_check_window_duration=self.START_CHECK_WINDOW_DURATION)
         self.event_loop = EventLoop(self.state_machine)
+        
+        # --- Start Pub/Sub ---
+        self.init_subscriptions()
+        self.init_publishers()
+        self.init_timers()
         
     def init_subscriptions(self):
         self.policy_state_sub = rospy.Subscriber(self.quad_name + "/agiros_pilot/policy_state", PolicyState, self.callback_policy_state)
@@ -276,7 +320,6 @@ class MLPPilot:
     def _effect_run_recovery_policy(self) -> Optional[np.ndarray]:
         if self.recovery_policy is None:
             return None
-        
         command, last_policy_request = self.recovery_policy.get_command()
         self.command_pub.publish(command)
         return last_policy_request
@@ -303,7 +346,15 @@ class MLPPilot:
         self.bounce_policy.push_observation(observation_data)
         if self.recovery_policy is not None:
             self.recovery_policy.push_observation(observation_data)
-        
+    
+    def _effect_reset_observation(self):
+        """
+        Resets the observation history in the policy interfaces.
+        """
+        self.bounce_policy.observation_history = self.bounce_policy.observation_history_class.generate_zero()
+        if self.recovery_policy is not None:
+            self.recovery_policy.observation_history = self.recovery_policy.observation_history_class.generate_zero()    
+    
     def _effect_logging(self, message: str, level: LoggingLevel = LoggingLevel.INFO):
         """
         Log a message with the specified logging level.

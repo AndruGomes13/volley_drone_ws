@@ -44,6 +44,7 @@ class LoggingLevel(Enum):
 
 class Effects(Protocol):
     def go_to_origin(self): ...
+    def reset_observation(self): ...
     def push_observation(self, observation_data: ObservationData): ...
     def run_recovery_control(self) -> Optional[np.ndarray]: ...
     def run_bounce_control(self) -> np.ndarray: ...
@@ -88,13 +89,17 @@ class EventLoop:
 
 # --- Drone and Ball Bounds ---
 # --- Constants / Parameters ---
+# ALL_DRONE_POSITION_BOUNDS = (
+#     np.array([-1.2, -1.2, -0.8]),
+#     np.array([1.2, 1.2, 1])
+# )
 ALL_DRONE_POSITION_BOUNDS = (
-    np.array([-1.2, -1.2, 0.4]),
-    np.array([1.2, 1.2, 2.0])
+    np.array([-2., -2., -0.5]),
+    np.array([2, 2, 2])
 )
 
 TO_ARM_DRONE_POSITION_BOUNDS = (
-    np.array([-0.5, -0.5, 0.5]),
+    np.array([-0.5, -0.5, -0.5]),
     np.array([0.5, 0.5, 0.5])
 )
 TO_ARM_DRONE_VELOCITY_BOUNDS = (
@@ -109,23 +114,23 @@ TO_ARM_DRONE_BODY_RATE_BOUNDS = (
 # --- Trigger Conditions ---
 # Area in which the ball must be detected to trigger the start of the bouncing policy
 ARMED_BALL_POSITION_TO_RUNNING_BOUNDS = (
-    np.array([-0.5, -0.5, 0.8]),
-    np.array([0.5, 0.5, 3])
+    np.array([-1.4, -1.4, -0.6]),
+    np.array([1.4, 1.4, 4])
 )
 
 # Area in which the ball must be detected to continue running the bouncing policy
 RUNNING_BALL_POSITION_BOUNDS = (
-    np.array([-1, -1, 0.5]),
-    np.array([1, 1, 3.0])
+ np.array([-1.5, -1.5, -1]),
+    np.array([1.5, 1.5, 4])
 )
 
 RUNNING_DRONE_POSITION_BOUNDS = (
-    np.array([-1, -1, 0.4]),
-    np.array([1, 1, 18])
+    np.array([-1, -1, -0.4]),
+    np.array([1, 1, 1.5])
 )
-RUNNING_DRONE_MAX_ANGLE = np.deg2rad(45)  # 45 degrees in radians 
+RUNNING_DRONE_MAX_ANGLE = np.deg2rad(60)  # 45 degrees in radians 
 
-RECOVERY_DRONE_MAX_ANGLE = np.deg2rad(60)  # 60 degrees in radians
+RECOVERY_DRONE_MAX_ANGLE = np.deg2rad(90)  # 60 degrees in radians
 
 # --- State Machine ---
 class StateMachine:
@@ -169,6 +174,7 @@ class StateMachine:
             #TODO: Check pre-arm conditions if needed
             self.state = StateMachineState.ARMED
             self.effects.go_to_origin()
+            self.effects.reset_observation()
             self.effects.logging("SM armed.")
         else:
             self.effects.logging("Arm request ignored in current state: " + str(self.state))
@@ -176,6 +182,7 @@ class StateMachine:
     def _handle_stop_request(self):
         if self.state in (StateMachineState.ARMED, StateMachineState.RUNNING, StateMachineState.RECOVERY):
             self.state = StateMachineState.STOPPED
+            self.effects.reset_observation()
             self.effects.logging("SM stopped.")
         else:
             self.effects.logging("Stop request ignored in current state: " + str(self.state))
@@ -199,18 +206,20 @@ class StateMachine:
         
         # --- Transition based on state ---            
         drone_outside_safety_bounds = not utilities.is_within_bounds(drone_state.position, ALL_DRONE_POSITION_BOUNDS)
-        if drone_outside_safety_bounds:
+        if drone_outside_safety_bounds and self.state != StateMachineState.STOPPED:
             self.state = StateMachineState.STOPPED
-            self.effects.logging("Drone outside safety bounds. Stopping policy.", LoggingLevel.WARN)
+            self.effects.logging(f"Drone outside safety bounds ({drone_state.position}). Stopping policy.", LoggingLevel.WARN)
 
         elif self.state == StateMachineState.ARMED:
             if self._check_pre_run_conditions():
+                self.effects.reset_observation() #TODO: Check if this make sense to add 
                 self.state = StateMachineState.RUNNING
                 self.effects.logging("Ball detected within ARMED bounds. Transitioning to RUNNING state.", LoggingLevel.INFO)
                 
         elif self.state == StateMachineState.RUNNING:
             if not self._check_running_conditions():
-                self.state = StateMachineState.RECOVERY
+                # self.state = StateMachineState.RECOVERY #TODO: DEBUG
+                self.state = StateMachineState.STOPPED #TODO: DEBUG
                 self.effects.logging("Running conditions not met. Transitioning to RECOVERY state.", LoggingLevel.WARN)
 
         elif self.state == StateMachineState.RECOVERY:
@@ -327,15 +336,19 @@ class StateMachine:
         # - The drone angle is within the defined bounds
         
         if self.last_ball_state is None or self.last_drone_state is None:
+            self.effects.logging("Last ball or drone state is None.", LoggingLevel.WARN)
             return False
 
         if not utilities.is_within_bounds(self.last_ball_state.position, RUNNING_BALL_POSITION_BOUNDS):
+            self.effects.logging("Ball position out of bounds.", LoggingLevel.WARN)
             return False
 
         if not utilities.is_within_bounds(self.last_drone_state.position, RUNNING_DRONE_POSITION_BOUNDS):
+            self.effects.logging("Drone position out of bounds.", LoggingLevel.WARN)
             return False
 
         if self._drone_angle_from_vertical(self.last_drone_state) >= RUNNING_DRONE_MAX_ANGLE:
+            self.effects.logging("Drone angle from vertical exceeds maximum allowed angle.", LoggingLevel.WARN)
             return False
 
         return True
