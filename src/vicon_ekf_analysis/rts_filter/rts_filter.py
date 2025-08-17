@@ -175,7 +175,8 @@ class RTS_CKF:
             Ak = outs.A_list[k]                        # transition from k -> k+1
             Ppk1 = outs.P_p[k+1]                       # prior at k+1
             L, low = cho_factor(self._sym(Ppk1), lower=True, check_finite=False)
-            Ck = cho_solve((L, low), (Ak @ outs.P_f[k]).T, check_finite=False).T  # (n,n)
+            rhs = (outs.P_f[k] @ Ak.T).T                 # (n, n)
+            Ck  = cho_solve((L, low), rhs, check_finite=False).T  # (n, n)
             dx = x_s[k+1] - outs.x_p[k+1]
             x_s[k] = outs.x_f[k] + Ck @ dx
             P_s[k] = outs.P_f[k] + Ck @ (P_s[k+1] - Ppk1) @ Ck.T
