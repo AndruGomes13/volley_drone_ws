@@ -46,7 +46,7 @@ RUN apt-get update && \
       libyaml-cpp-dev libeigen3-dev libgoogle-glog-dev \
       ccache tmux net-tools iputils-ping usbutils screen \
       automake bison flex gperf libncurses5-dev libtool \
-      libusb-1.0-0-dev pkg-config dfu-util lsof \
+      libusb-1.0-0-dev pkg-config dfu-util lsof chrony\
       linux-tools-generic dbus xdg-utils clangd-18 geographiclib-tools && \
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60 \
                         --slave /usr/bin/g++ g++ /usr/bin/g++-9 && \
@@ -80,7 +80,7 @@ RUN add-apt-repository ppa:deadsnakes/ppa \
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
 RUN python3.11 -m pip install --upgrade pip setuptools wheel
-RUN python3.11 -m pip install --upgrade --ignore-installed PyYAML "jax[cpu]" brax pyzmq pydantic
+RUN python3.11 -m pip install --upgrade --ignore-installed PyYAML "jax[cpu]" brax pyzmq pydantic scipy plotly nbformat ipykernel pandas
 
 # switch default compiler to clang-10
 ENV CC=/usr/bin/clang-10
