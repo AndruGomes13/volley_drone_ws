@@ -13,6 +13,7 @@ class QuadStateEstimates:
     @classmethod
     def from_csv(cls, path: Path) -> Self:
         df = pd.read_csv(path)
+        df = cls._sanitize_order(df)
 
         # Drop columns you don't want
         cols_to_drop = [
@@ -63,6 +64,33 @@ class QuadStateEstimates:
     @property
     def acceleration_angular(self):
         return self.df[["acc_ang_x", "acc_ang_y", "acc_ang_z"]]
+    
+    @staticmethod
+    def _sanitize_order(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Ensure the DataFrame is sorted by time.
+        """
+        df = df.sort_values(by="header_seq").reset_index(drop=True)
+        df = df.drop_duplicates(subset=["header_seq"], keep="first").reset_index(drop=True)
+
+        # Loop over timestamps to check for timestamp violations
+        time_col = df["header_stamp"].values
+        oldest_time = time_col[0]
+        invalid_indices = []
+        for i in range(1, len(time_col)):
+            if time_col[i] <= oldest_time:
+                invalid_indices.append(i)
+            else:
+                oldest_time = time_col[i]
+                
+        if invalid_indices:
+            print(f"Found {len(invalid_indices)} timestamp violations in state estimates.")
+            print("Indices of violations:", invalid_indices)
+            df = df.drop(index=invalid_indices).reset_index(drop=True)
+        else:
+            print("No timestamp violations found in state estimates.")   
+            
+        return df
 
 
 @dataclass
@@ -72,7 +100,7 @@ class ViconMeasurements:
     @classmethod
     def from_csv(cls, path: Path):
         df = pd.read_csv(path)
-        df = df.sort_values("header_seq").reset_index(drop=True)
+        df = cls._sanitize_order(df)
         return cls(df)
     
     @property
@@ -86,6 +114,44 @@ class ViconMeasurements:
     @property
     def time(self):
         return self.df["header_stamp"]  
+    
+    @staticmethod
+    def _sanitize_order(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Ensure the DataFrame is sorted by time.
+        """
+        df = df.drop_duplicates(subset=["header_seq"], keep="first").reset_index(drop=True)
+        df = df.sort_values(by="header_seq").reset_index(drop=True)
+
+        # Loop over timestamps to check for timestamp violations
+        time_col = df["header_stamp"].values
+        oldest_time = time_col[0]
+        invalid_indices = []
+        for i in range(1, len(time_col)):
+            if time_col[i] <= oldest_time:
+                invalid_indices.append(i)
+            else:
+                oldest_time = time_col[i]
+                
+        if invalid_indices:
+            print(f"Found {len(invalid_indices)} timestamp violations in Vicon data.")
+            print("Indices of violations:", invalid_indices)
+
+            # Check if they are individual or consecutive
+            consecutive = np.diff(invalid_indices) == 1
+            if np.any(consecutive):
+                print(f"Consecutive violations: {consecutive.sum()} out of {len(invalid_indices)}")
+                print("If there are too many consecutive violations, consider checking the data source.")
+            else:
+                print("All violations are individual.")
+
+            print("Removing rows with timestamp violations.")
+            df = df.drop(index=invalid_indices).reset_index(drop=True)
+
+        else:
+            print("No timestamp violations found in Vicon data.")   
+            
+        return df
 
 if __name__ == "__main__":
     # Example usage

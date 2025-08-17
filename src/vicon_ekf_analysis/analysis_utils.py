@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Slerp
 import numpy as np
 from scipy import signal
 import scipy.interpolate
+
 
 # --- Classes ---
 @dataclass
@@ -216,9 +218,9 @@ def interpolate_position(original_positions: np.ndarray, original_timestamps: np
     
     # Validity: queries inside the convex hull of t_src
     valid_mask = (new_timestamps >= original_timestamps[0]) & (new_timestamps <= original_timestamps[-1])
-    new_ts = new_timestamps[valid_mask]
-    
-    if new_ts.size == 0:
+    new_timestamps_valid = new_timestamps[valid_mask]
+
+    if new_timestamps_valid.size == 0:
         raise ValueError("No valid timestamps for interpolation.")
     
     # Interpolate each coordinate separately
@@ -228,13 +230,39 @@ def interpolate_position(original_positions: np.ndarray, original_timestamps: np
 
     # Stack the interpolated coordinates
     interpolated_positions = np.column_stack((
-        interp_func_x(new_timestamps),
-        interp_func_y(new_timestamps),
-        interp_func_z(new_timestamps)
+        interp_func_x(new_timestamps_valid),
+        interp_func_y(new_timestamps_valid),
+        interp_func_z(new_timestamps_valid)
     ))
     
     return interpolated_positions, valid_mask
 
+def interpolate_orientation(original_orientations: R, original_timestamps: np.ndarray, new_timestamps: np.ndarray) -> R:
+    """
+    Interpolate orientations to match new timestamps.
+    original_orientations: Rotation object with batch size N.
+    original_timestamps: 1D array of timestamps corresponding to original_orientations.
+    new_timestamps: 1D array of timestamps to interpolate to.
+    Returns interpolated orientations as a Rotation object.
+    """
+    assert np.all(np.diff(original_timestamps) >= 0), "Original timestamps must be sorted."
+    assert np.all(np.diff(new_timestamps) >= 0), "New timestamps must be sorted."
+    assert original_timestamps.ndim == 1, "Original timestamps must be a 1D array."
+    assert new_timestamps.ndim == 1, "New timestamps must be a 1D array."
+    
+    # Validity: queries inside the convex hull of t_src
+    valid_mask = (new_timestamps >= original_timestamps[0]) & (new_timestamps <= original_timestamps[-1])
+    new_timestamps_valid = new_timestamps[valid_mask]
+
+    if new_timestamps_valid.size == 0:
+        raise ValueError("No valid timestamps for interpolation.")
+    
+    # Interpolate using spherical linear interpolation (slerp)
+    slerp = Slerp(original_timestamps, original_orientations)
+    
+    return slerp(new_timestamps_valid), valid_mask
+
 if __name__ == "__main__":
     # Example usage
     print(R.identity())  # Identity rotation
+    help(Slerp)
