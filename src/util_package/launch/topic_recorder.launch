@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="util_package" type="topic_recorder.py" name="topic_recorder" output="screen" respawn="false">
+    </node>
+</launch>
