@@ -8,7 +8,7 @@ import scipy.interpolate
 
 # --- Classes ---
 @dataclass
-class PositionAnalysis:
+class XYZAnalysis:
     mean: np.ndarray
     std: np.ndarray
     percentile_95: np.ndarray
@@ -22,6 +22,7 @@ class OrientationAnalysis:
     mean: R
     std: np.ndarray
     vec_rms: np.ndarray
+    vec_max_deviation: np.ndarray
     vec_covariance: np.ndarray
 
 @dataclass
@@ -31,7 +32,7 @@ class ACFAnalysis:
     conf_band: np.ndarray
     
 # --- Printing Fucntions ---
-def print_position_analysis(analysis: PositionAnalysis, label: str = "Position"):
+def print_xyz_analysis(analysis: XYZAnalysis, label: str = "Position"):
     # --- Mean ---
     print(f"{label} Mean:\n X: {analysis.mean[0]:.4f};    Y: {analysis.mean[1]:.4f};    Z: {analysis.mean[2]:.4f}")
 
@@ -66,6 +67,10 @@ def print_orientation_analysis(analysis: OrientationAnalysis, label: str = "Orie
     # --- Vector RMS ---
     vec_rms = analysis.vec_rms
     print(f"{label} Vector RMS (as deg):\n X: {np.rad2deg(vec_rms[0]):.8f};    Y: {np.rad2deg(vec_rms[1]):.8f};    Z: {np.rad2deg(vec_rms[2]):.8f}")
+    
+    # --- Vector Max Deviation ---
+    vec_max_deviation = analysis.vec_max_deviation
+    print(f"{label} Vector Max Deviation (as deg):\n X: {np.rad2deg(vec_max_deviation[0]):.8f};    Y: {np.rad2deg(vec_max_deviation[1]):.8f};    Z: {np.rad2deg(vec_max_deviation[2]):.8f}")
 
     # --- Covariance Analysis ---
     print(f"{label} Covariance Matrix (rows/cols: x, y, z):")
@@ -151,7 +156,7 @@ def compute_acf(x, max_lag=None, unbiased=True, demean=True):
         conf_band=np.array([-ci, ci]) if max_lag > 0 else np.array([0, 0])
     )
 
-def position_analysis(position_measurements: np.ndarray) -> PositionAnalysis:
+def xyz_analysis(position_measurements: np.ndarray) -> XYZAnalysis:
     """
     Perform position analysis on the given measurements.
     Returns a dictionary with mean, std, 95th and 99th percentiles, RMS, and covariance.
@@ -170,7 +175,7 @@ def position_analysis(position_measurements: np.ndarray) -> PositionAnalysis:
 
     position_cov = np.cov(position_residuals, rowvar=False)
 
-    return PositionAnalysis(
+    return XYZAnalysis(
         mean=position_mean,
         std=position_std,
         percentile_95=position_95th,
@@ -192,16 +197,19 @@ def orientation_analysis(orientation_measurements: R) -> OrientationAnalysis:
     
     orientation_vec_rms = np.sqrt((orientation_residuals.as_rotvec()**2).mean(axis=0))
     
+    orientation_max_deviation = np.abs(orientation_residuals.as_rotvec()).max(axis=0)
+    
     orientation_covariance = np.cov(orientation_residuals.as_rotvec(), rowvar=False)
 
     return OrientationAnalysis(
         mean=orientation_mean,
         std=orientation_std,
         vec_rms=orientation_vec_rms,
+        vec_max_deviation=orientation_max_deviation,
         vec_covariance=orientation_covariance
     )
   
-def interpolate_position(original_positions: np.ndarray, original_timestamps: np.ndarray, new_timestamps: np.ndarray) -> np.ndarray:
+def interpolate_xyz_vector(original_positions: np.ndarray, original_timestamps: np.ndarray, new_timestamps: np.ndarray) -> np.ndarray:
     """
     Interpolate positions to match new timestamps.
     original_positions: Nx3 array of positions (x, y, z).
@@ -262,6 +270,28 @@ def interpolate_orientation(original_orientations: R, original_timestamps: np.nd
     
     return slerp(new_timestamps_valid), valid_mask
 
+# --- Auto regressive noise model ---
+def ar1_params(residuals):
+    x = residuals - residuals.mean()
+    s = x.std(ddof=0)
+    r1 = np.corrcoef(x[:-1], x[1:])[0,1]
+    phi = r1
+    sigma_eps = s * np.sqrt(1 - phi**2)
+    return phi, sigma_eps
+
+class AR1Noise:
+    def __init__(self, phi, sigma_eps):
+        self.phi = float(phi)
+        self.sigma = float(sigma_eps)
+        self.r = 0.0
+    def reset(self, r0=0.0):
+        self.r = float(r0)
+    def step(self, rng=np.random):
+        eps = rng.normal(0.0, self.sigma)
+        self.r = self.phi * self.r + eps
+        return self.r
+    
+    
 if __name__ == "__main__":
     # Example usage
     print(R.identity())  # Identity rotation

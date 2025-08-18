@@ -48,6 +48,10 @@ class QuadStateEstimates:
     @property
     def orientation(self):
         return self.df[["quat_w", "quat_x", "quat_y", "quat_z"]]
+    
+    @property
+    def orientation_xyzw(self):
+        return self.df[["quat_x", "quat_y", "quat_z", "quat_w"]]
 
     @property
     def velocity_linear(self):
@@ -109,7 +113,12 @@ class ViconMeasurements:
 
     @property
     def orientation(self):
+        """ [w, x, y, z] quaternion format """
         return self.df[["quat_w", "quat_x", "quat_y", "quat_z"]]
+    
+    @property
+    def orientation_xyzw(self):
+        return self.df[["quat_x", "quat_y", "quat_z", "quat_w"]]
     
     @property
     def time(self):
