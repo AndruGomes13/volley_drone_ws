@@ -67,7 +67,7 @@ RUN apt-get update  && \
 RUN apt-get update && apt-get install -y python3.8-venv python3.8-distutils
 RUN curl -sS https://bootstrap.pypa.io/pip/3.8/get-pip.py | python3.8
 RUN python3.8 -m pip install --upgrade pip setuptools wheel
-RUN python3.8 -m pip install --no-cache-dir catkin-tools scipy typing_extensions pydantic pyzmq
+RUN python3.8 -m pip install --no-cache-dir catkin-tools scipy typing_extensions pydantic pyzmq casadi nbformat
 
 # --- Setup Python 3.11 Environment for inference ---
 RUN add-apt-repository ppa:deadsnakes/ppa \
@@ -80,8 +80,7 @@ RUN add-apt-repository ppa:deadsnakes/ppa \
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
 RUN python3.11 -m pip install --upgrade pip setuptools wheel
-RUN python3.11 -m pip install --upgrade --ignore-installed PyYAML "jax[cpu]" brax pyzmq pydantic scipy plotly nbformat ipykernel pandas
-
+RUN python3.11 -m pip install --upgrade --ignore-installed PyYAML "jax[cpu]" brax pyzmq pydantic scipy plotly nbformat ipykernel pandas scikit-learn matplotlib pyquaternion
 # switch default compiler to clang-10
 ENV CC=/usr/bin/clang-10
 ENV CXX=/usr/bin/clang++-10
@@ -107,6 +106,7 @@ USER ${USERNAME}
 WORKDIR ${HOME}
 
 # clone + install your ZSH setup
+RUN sudo apt-get update && sudo apt-get -y install zsh 
 RUN git clone https://github.com/AndruGomes13/zsh-quick-boot.git ~/zsh-quick-boot && \
     ~/zsh-quick-boot/install.sh
 
