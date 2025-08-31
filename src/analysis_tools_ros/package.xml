@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>analysis_tools_ros</name>
+  <version>0.0.1</version>
+  <description>Collection of analysis tools/utils.</description>
+
+  <maintainer email="you@example.com">Your Name</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies for running Python code -->
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>agiros_msgs</exec_depend>
+
+  <!-- If you use NumPy or similar Python packages -->
+  <exec_depend>python3-numpy</exec_depend>
+
+  <!-- Export info (for Python packages) -->
+  <export>
+  </export>
+</package>
