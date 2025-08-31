@@ -22,8 +22,10 @@ class ActionModelConfig(BaseModel):
     
     # --- Policy to Command ---
     max_body_rate: Tuple3 = (1022*DEG, 1022*DEG, 524*DEG) # Shape (3,) for roll, pitch, yaw
-    max_command_rate_change: Tuple4 = (4*G/100, 20*DEG, 20*DEG, 20*DEG)
+    max_command_rate_change: Tuple4 = (4*G, 1200*DEG, 1200*DEG, 1200*DEG)
+    command_filter_cutoff_freq: float = 25
     use_command_rate_change_clipping: bool = False
+    use_command_filtering: bool = False
 
 class PolicyToCommandMapper(ABC):
     def __init__(self, config: ActionModelConfig):

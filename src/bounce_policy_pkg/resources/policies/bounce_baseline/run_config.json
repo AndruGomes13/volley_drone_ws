@@ -1,7 +1,7 @@
 {
     "action_repeat": 4,
-    "run_name": "brax_ppo_20250822_160605",
-    "timestamp": "20250822_160605",
+    "run_name": "brax_ppo_20250822_210606",
+    "timestamp": "20250822_210606",
     "env": {
         "backend": "mjx",
         "physics_steps_per_control_step": 1,
@@ -20,12 +20,12 @@
                 ]
             },
             "reward_drone_dist_to_target": {
-                "kind": "const",
+                "kind": "exp",
                 "start": -0.001,
-                "end": -2.0,
+                "end": -0.2,
                 "p_range": [
-                    0.2,
-                    0.4
+                    0.4,
+                    0.7
                 ]
             },
             "reward_drone_ang_from_v": {

@@ -23,6 +23,7 @@ import geometry_msgs.msg as geometry_msgs
 
 
 DEG= np.pi / 180  # Degrees to radians conversion
+G = 9.81
 class PolicyInterface:
     """
     An interface for the policy which configures the action and observation models, initializes the policy server, and manages the state of the policy and observation history.
@@ -35,8 +36,11 @@ class PolicyInterface:
         checkpoint_path = self._get_checkpoint_path(policy_path)
         self.action_config, observation_config = self._parse_config(config_path)
         
+        rospy.loginfo(f"Using action model config: {self.action_config}")
+        
         # --- Action Model ---
         self.policy_to_command = PolicyToNormalizedThrustAndBodyRate(self.action_config)
+        self.clipping_values  = np.array(self.action_config.max_command_rate_change) * 1/self.SAMPLING_FREQUENCY
 
         # --- Observation Model ---
         self.observation_model = get_observation_class(observation_config.actor_observation_type)
@@ -55,7 +59,7 @@ class PolicyInterface:
         )
         
         # --- Buffer ---
-        self.last_command: Optional[Command] = None 
+        self.last_command: Optional[Command] = None
         
         self._check_inference_time()
         
@@ -73,43 +77,39 @@ class PolicyInterface:
         obs = self.observation_history.to_array()
         policy_request = self.inference_server.run_inference(obs)
         time = rospy.Time.now().to_sec()
-        command = self.policy_to_command.map(policy_request, time)
-        
-        ## TODO: Temp clipping 
+        request_command = self.policy_to_command.map(policy_request, time)
             
         # if last_policy_request is not None and self.action_config.use_command_rate_change_clipping:
         if self.last_command is None or time - self.last_command.t > 0.1:
-            rospy.logwarn("No last command available for clipping. Not clipping.")
-            self.last_command = command
-            return command, policy_request
-        
+            rospy.logwarn("No last command available. Setting default hover command.")
+            self.last_command = Command(collective_thrust=G, bodyrates=geometry_msgs.Vector3(0, 0, 0), is_single_rotor_thrust=False, t=time-1/self.SAMPLING_FREQUENCY)
+
+        previous_command_array = np.array([self.last_command.collective_thrust, self.last_command.bodyrates.x, self.last_command.bodyrates.y, self.last_command.bodyrates.z])
+        request_command_array = np.array([request_command.collective_thrust, request_command.bodyrates.x, request_command.bodyrates.y, request_command.bodyrates.z])
+
         if self.action_config.use_command_rate_change_clipping:
-            # Clip the command to the last policy request
-            last_command = self.last_command
-            clip = np.array(self.action_config.max_command_rate_change) * 0.5
-            delta_thrust = np.clip(
-                command.collective_thrust - last_command.collective_thrust,
-                -clip[0],
-                clip[0]
-            )
-            delta_body_rate_command = geometry_msgs.Vector3(
-                np.clip(command.bodyrates.x - last_command.bodyrates.x, -clip[1], clip[1]),
-                np.clip(command.bodyrates.y - last_command.bodyrates.y, -clip[2], clip[2]),
-                np.clip(command.bodyrates.z - last_command.bodyrates.z, -clip[3], clip[3])
-            )
-            print(f"Delta thrust: {delta_thrust}, Delta body rate: {delta_body_rate_command}")
+
+            delta_command = np.clip(request_command_array - previous_command_array, -self.clipping_values, self.clipping_values)
+
+            request_command_array = previous_command_array + delta_command
+
+        if self.action_config.use_command_filtering:
+            dt_nom = 1/self.SAMPLING_FREQUENCY
+            dt = time - self.last_command.t
+            dt = np.clip(dt, dt_nom*0.5, dt_nom*1.5)  # Ensure dt is not too small
+            alpha = 1 - np.exp(-dt* self.action_config.command_filter_cutoff_freq * 2 * np.pi)
+
+            request_command_array = alpha * request_command_array + (1-alpha) * previous_command_array
         
-            print(f"Command: {command.collective_thrust}, {command.bodyrates.x}, {command.bodyrates.y}, {command.bodyrates.z}")
-            command.collective_thrust = last_command.collective_thrust + delta_thrust
-            command.bodyrates = geometry_msgs.Vector3(
-                last_command.bodyrates.x + delta_body_rate_command.x,
-                last_command.bodyrates.y + delta_body_rate_command.y,
-                last_command.bodyrates.z + delta_body_rate_command.z
-            )
-            print(f"Clipped command: {command.collective_thrust}, {command.bodyrates.x}, {command.bodyrates.y}, {command.bodyrates.z}")        
         
-        self.last_command = command
-        return command, policy_request
+        request_command.collective_thrust = request_command_array[0]
+        request_command.bodyrates.x = request_command_array[1]
+        request_command.bodyrates.y = request_command_array[2]
+        request_command.bodyrates.z = request_command_array[3]
+
+        self.last_command = request_command
+        
+        return request_command, policy_request
 
     # --- Utility Methods ---
     def _get_checkpoint_path(self, policy_path: Path) -> Path:
@@ -199,7 +199,9 @@ class Effects:
         return self.p._effect_reset_observation()
     def logging(self, msg:str, level:LoggingLevel = LoggingLevel.INFO):
         self.p._effect_logging(msg, level)
-        
+    def get_ros_time(self) -> float:
+        return self.p._get_ros_time()
+    
 ORIGIN_OFFSET = np.array([0.0, 0.0, 1.2])  # Offset to origin in the world frame
 
 class MLPPilot:
@@ -232,7 +234,7 @@ class MLPPilot:
         self.init_timers()
         
     def init_subscriptions(self):
-        self.policy_state_sub = rospy.Subscriber(self.quad_name + "/agiros_pilot/policy_state", PolicyState, self.callback_policy_state)
+        self.policy_state_sub = rospy.Subscriber(self.quad_name + "/agiros_pilot/policy_state", PolicyState, self.callback_policy_state, queue_size=1, tcp_nodelay=True)
         
         #NOTE: Ideally we want arm and stop to be sent by the agiros gui separately. At the moment, to avoid changing the gui, we will use the same convention where the arm/start and stop signal are sent on the same topic as a bool message.
         # self.arm_signal_sub = rospy.Subscriber(
@@ -315,7 +317,8 @@ class MLPPilot:
     def _effect_run_bounce_policy(self) ->np.ndarray:
         command, last_policy_request = self.bounce_policy.get_command()
         self.command_pub.publish(command)
-        return last_policy_request
+        last_command_request = np.array([command.collective_thrust, command.bodyrates.x, command.bodyrates.y, command.bodyrates.z])
+        return last_policy_request, last_command_request
     
     def _effect_run_recovery_policy(self) -> Optional[np.ndarray]:
         if self.recovery_policy is None:
@@ -368,3 +371,8 @@ class MLPPilot:
         else:
             rospy.logdebug(message)
         
+    def _get_ros_time(self) -> float:
+        """
+        Returns the current ROS time.
+        """
+        return rospy.Time.now().to_sec()

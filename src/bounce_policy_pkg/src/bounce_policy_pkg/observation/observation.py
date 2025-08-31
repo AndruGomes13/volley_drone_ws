@@ -21,6 +21,8 @@ Flag1 = Annotated[bc.xp.ndarray, (1,), bool]
 class ObservationType(StrEnum):
     DRONE_VICON = "drone_vicon"
     DRONE_BALL_RELATIVE_VICON = "drone_ball_vicon"
+    DRONE_BALL_RELATIVE_VICON_OMEGA = "drone_ball_vicon_omega"
+    
     
 @bc.dataclass
 class Observation(ABC):
@@ -118,6 +120,23 @@ class DroneBallRelativeViconObs(Observation):
     drone_body_rate: Vec3
     previous_action: Vec4
     
+    # --- Ball ---
+    ball_velocity: Vec3
+    ball_relative_to_drone: Vec3
+    
+@bc.dataclass(eq=False)
+class DroneBallRelativeViconObsOmega(Observation):
+    """Current observation of the drone environment."""
+    # --- Drone ---
+    drone_position: Vec3
+    g_vec: Vec3
+    sin_yaw: Vec1
+    cos_yaw: Vec1
+    drone_velocity: Vec3
+    drone_body_rate: Vec3
+    previous_action: Vec4
+    previous_thrust_br_request: Vec4
+
     # --- Ball ---
     ball_velocity: Vec3
     ball_relative_to_drone: Vec3

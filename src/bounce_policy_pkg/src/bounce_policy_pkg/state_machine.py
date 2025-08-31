@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from queue import Queue, Empty
 import threading
-from typing import Deque, Optional, Protocol
+import time
+from typing import Deque, Optional, Protocol, Union
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
@@ -16,6 +17,7 @@ import bounce_policy_pkg.utilities as utilities
 from bounce_policy_pkg.types.drone import DroneState
 from bounce_policy_pkg.types.ball import BallState
 
+G = 9.81
 # --- States ---
 class StateMachineState(Enum):
     STOPPED = auto()
@@ -47,8 +49,9 @@ class Effects(Protocol):
     def reset_observation(self): ...
     def push_observation(self, observation_data: ObservationData): ...
     def run_recovery_control(self) -> Optional[np.ndarray]: ...
-    def run_bounce_control(self) -> np.ndarray: ...
+    def run_bounce_control(self) -> Union[np.ndarray, np.ndarray]: ...
     def logging(self, message: str, level: LoggingLevel = LoggingLevel.INFO): ...
+    def get_ros_time(self) -> float: ...
 
 # --- Event Loop ---
 MAX_QUEUE_SIZE = 10
@@ -157,6 +160,7 @@ class StateMachine:
         self.last_drone_state: Optional[DroneState] = None
         self.last_ball_state: Optional[BallState] = None
         self.last_policy_request: Optional[np.ndarray] = np.zeros((4,))
+        self.last_command_request: Optional[np.ndarray] = np.array([G, 0,0,0])
         self.drone_state_buffer: Deque[DroneState] = deque(maxlen=self.BUFFER_DRONE_HISTORY_SIZE)
 
     def on_event(self, event: Event):
@@ -189,6 +193,9 @@ class StateMachine:
 
     def _handle_policy_state_update(self, t: float, drone_state: DroneState, ball_state: BallState):
 
+        delta_state_received_time = (self.effects.get_ros_time() - drone_state.time)
+        t_start = time.perf_counter()
+
         self.last_time = t
         self.last_drone_state = drone_state
         self.last_ball_state = ball_state
@@ -200,9 +207,12 @@ class StateMachine:
         observation_data = ObservationData(
             drone_state=drone_state,
             ball_state=ball_state,
-            last_policy_request=self.last_policy_request
+            last_policy_request=self.last_policy_request,
+            last_policy_command=self.last_command_request
         )
         self.effects.push_observation(observation_data)
+        
+        t_push_obs = time.perf_counter()
         
         # --- Transition based on state ---            
         drone_outside_safety_bounds = not utilities.is_within_bounds(drone_state.position, ALL_DRONE_POSITION_BOUNDS)
@@ -227,12 +237,16 @@ class StateMachine:
                 self.state = StateMachineState.STOPPED
                 self.effects.logging("Recovery conditions not met. Transitioning to STOPPED state.", LoggingLevel.WARN)
 
+        t_state_transitions = time.perf_counter()
+        t_inf_time = None
         # --- Execute effects based on state ---
         if self.state == StateMachineState.STOPPED:
             pass
             
         elif self.state == StateMachineState.RUNNING:
-            self.last_policy_request = self.effects.run_bounce_control()
+            t_inf_start = time.perf_counter()
+            self.last_policy_request, self.last_command_request = self.effects.run_bounce_control()
+            t_inf_time = time.perf_counter() - t_inf_start
         
         elif self.state == StateMachineState.RECOVERY:
             recovery_control = self.effects.run_recovery_control()
@@ -240,7 +254,28 @@ class StateMachine:
                 self.last_policy_request = recovery_control
             else:
                 self.last_policy_request = np.zeros((4,))
+        
+        t_end = time.perf_counter()
+        # logging_str = ("Time breakdown (ms): \n"
+        #                   f"  Total: {(t_end - t_start)*1000:.6f} ms\n"
+        #                   f"  Push Obs: {(t_push_obs - t_start)*1000:.6f} ms\n"
+        #                   f"  State Transitions: {(t_state_transitions - t_push_obs)*1000:.6f} ms\n"
+        #                   f"  Inference: {t_inf_time * 1000 if t_inf_time is not None else 0:.6f} ms\n"
+        #                   f"  Effects: {(t_end - t_state_transitions)*1000:.6f} ms\n"
+        #                   f"  Delta State Received Time: {delta_state_received_time*1000:.6f} ms\n"
+        #                 )
+        # self.effects.logging(logging_str, LoggingLevel.INFO)
+        
+        total = t_end - t_start
+        PROCESSING_TIME_THRESHOLD = 0.02
+        OBSERVATION_DELAY_THRESHOLD = 0.02
+        if total > PROCESSING_TIME_THRESHOLD:
+            logging_str = f"Total time exceeded threshold: {total*1000:.6f} ms"
+            self.effects.logging(logging_str, LoggingLevel.WARN)
 
+        if delta_state_received_time > OBSERVATION_DELAY_THRESHOLD:
+            logging_str = f"Delta state received time exceeded threshold: {delta_state_received_time*1000:.6f} ms"
+            self.effects.logging(logging_str, LoggingLevel.WARN)
 
     # --- Utils ---
     def _drone_angle_from_vertical(self, drone_state: DroneState) -> float:

@@ -1,7 +1,7 @@
 {
     "action_repeat": 4,
-    "run_name": "brax_ppo_20250822_160605",
-    "timestamp": "20250822_160605",
+    "run_name": "brax_ppo_20250822_215641",
+    "timestamp": "20250822_215641",
     "env": {
         "backend": "mjx",
         "physics_steps_per_control_step": 1,
@@ -20,12 +20,12 @@
                 ]
             },
             "reward_drone_dist_to_target": {
-                "kind": "const",
+                "kind": "exp",
                 "start": -0.001,
-                "end": -2.0,
+                "end": -0.2,
                 "p_range": [
-                    0.2,
-                    0.4
+                    0.4,
+                    0.7
                 ]
             },
             "reward_drone_ang_from_v": {
@@ -532,12 +532,12 @@
             "occlusion_probability": 0.0,
             "occlusion_duration_range": 0
         },
-        "action_delay": 0.02,
-        "action_history": 2,
+        "action_delay": 0.04,
+        "action_history": 4,
         "collision_t_window": 0.1,
         "check_collision": true,
         "action_repeat": 1,
-        "action_delay_discrete": 2
+        "action_delay_discrete": 4
     },
     "network": {
         "policy_hidden_layer_sizes": [

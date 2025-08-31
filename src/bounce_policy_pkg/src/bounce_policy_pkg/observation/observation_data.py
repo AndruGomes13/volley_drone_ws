@@ -13,3 +13,4 @@ class ObservationData:
     drone_state: Optional[DroneState]
     ball_state: Optional[BallState]
     last_policy_request: Optional[np.ndarray]
+    last_policy_command: Optional[np.ndarray]
