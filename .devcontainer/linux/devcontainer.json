@@ -70,7 +70,8 @@
         "donjayamanne.python-extension-pack",
         "ms-python.pylint",
         "donjayamanne.gi",
-        "eamodio.gitlens"
+        "eamodio.gitlens",
+        "ms-toolsai.jupyter",
       ]
     }
   }
