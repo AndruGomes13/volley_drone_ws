@@ -109,11 +109,16 @@ class SimpleCsvWriter:
     def __init__(self, path: Path):
         self.path = path
         ensure_dir(self.path)
-        self.header_written = self.path.exists() and self.path.stat().st_size > 0
+        if self.path.exists():
+            raise FileExistsError(f"Refusing to overwrite existing file: {self.path}")
+        self.header_written = False
         self.buffer = []
         self.fieldnames = None
 
     def add(self, row: dict):
+        assert isinstance(row, dict), f"Expected dict row, got {type(row)}"
+        if row == {}:
+            return
         if self.fieldnames is None:
             # Lock schema from first row
             self.fieldnames = list(row.keys())
@@ -154,6 +159,7 @@ class LoggerNode:
         t = time.time()
         readable_time = datetime.datetime.fromtimestamp(t).strftime("%Y-%m-%d_%H-%M-%S")
         log_dir = log_path / f"recording_{readable_time}"
+        rospy.loginfo(f"Logging to {log_dir}")
 
         # Create writers for each topic
         self.writers = []
@@ -174,7 +180,7 @@ class LoggerNode:
         writer = SimpleCsvWriter(directory / (entry.csv_name + ".csv"))
         
         # Create subscriber callback
-        callback = self._create_call_back(entry.msg_type, writer)
+        callback = self._create_call_back(writer)
         subscriber = rospy.Subscriber(entry.topic, entry.msg_type, callback, queue_size=100)
 
         rospy.loginfo(f"Logging {entry.topic} -> {entry.csv_name + '.csv'}")
@@ -196,7 +202,7 @@ class LoggerNode:
                 raise ValueError("Each entry must have a valid topic, csv_name, and msg_type.")
         
 
-    def _create_call_back(self, msg_type: type, writer: SimpleCsvWriter):
+    def _create_call_back(self,writer: SimpleCsvWriter):
         def callback(msg):
             row = flatten_msg(msg)
             writer.add(row)
@@ -227,7 +233,8 @@ def main():
     entries = [
         TopicCsvType(topic="/volley_drone/agiros_pilot/state", csv_name="quad_state", msg_type=StateMsg),
         TopicCsvType(topic="/mocap/volley_drone/pose", csv_name="mocap", msg_type=PoseStamped),
-        TopicCsvType(topic="/volley_drone/agiros_pilot/command", csv_name="command", msg_type=Command),
+        TopicCsvType(topic="/volley_drone/agiros_pilot/mpc_command", csv_name="command", msg_type=Command),
+        TopicCsvType(topic="/volley_drone/agiros_pilot/feedthrough_command", csv_name="feed_command", msg_type=Command),
     ]
     
     rospy.init_node("state_mocap_logger", anonymous=False)
