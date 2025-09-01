@@ -12,7 +12,7 @@ from typing import Deque, Optional, Protocol, Union
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from bounce_policy_pkg.observation.observation_data import ObservationData
+from observation_models import ObservationData
 import bounce_policy_pkg.utilities as utilities
 from bounce_policy_pkg.types.drone import DroneState
 from bounce_policy_pkg.types.ball import BallState
@@ -205,10 +205,12 @@ class StateMachine:
         
         # --- Push observation data ---
         observation_data = ObservationData(
-            drone_state=drone_state,
-            ball_state=ball_state,
+            # drone_state=drone_state,
+            drone_state_noisy=drone_state,
+            # ball_state=ball_state,
+            ball_state_noisy=ball_state,
             last_policy_request=self.last_policy_request,
-            last_policy_command=self.last_command_request
+            # last_policy_command=self.last_command_request
         )
         self.effects.push_observation(observation_data)
         

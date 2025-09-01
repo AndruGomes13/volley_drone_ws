@@ -2,15 +2,11 @@ from dataclasses import dataclass
 import numpy as np
 from typing_extensions import Self
 from agiros_msgs.msg._BallState import BallState as BallStateMsg
+from sim_types.BallState import BallState as _BaseBallState
+from sim_utils.jax_numpy_backend import numpy_jax_backend as bc
 
-
-@dataclass
-class BallState:
-    time:float
-    position: np.ndarray
-    velocity: np.ndarray
-    
-    #TODO
+bc.dataclass
+class BallState(_BaseBallState):
     @classmethod
     def from_msg(cls, msg: BallStateMsg) -> Self: 
         
@@ -32,5 +28,8 @@ class BallState:
         )
         
     def is_valid(self) -> bool:
+        if (self.time is not None) or (self.position is not None) or (self.velocity is not None):
+            return False
+
         return self.position.shape == (3,) and self.velocity.shape == (3,) and np.isfinite(self.position).all() and np.isfinite(self.velocity).all()
     

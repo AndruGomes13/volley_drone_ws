@@ -10,6 +10,8 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <!-- Dependencies for running Python code -->
+  <exec_depend>drone_playground_py</exec_depend>
+  
   <exec_depend>rospy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>agiros_msgs</exec_depend>

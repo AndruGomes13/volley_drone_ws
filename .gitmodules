@@ -19,3 +19,7 @@
 	path = src/motion_capture_ros/external/libmotioncapture
 	url = git@github.com:AndruGomes13/libmotioncapture.git
 	branch = main
+[submodule "src/drone_2d_playground"]
+	path = src/drone_2d_playground
+	url = git@github.com:AndruGomes13/drone_2d_playground.git
+	branch = refactor

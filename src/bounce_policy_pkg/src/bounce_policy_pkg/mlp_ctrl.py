@@ -7,20 +7,31 @@ import threading
 import numpy as np
 from agiros_msgs.msg import QuadState, Command, PolicyState
 from bounce_policy_pkg.state_machine import StateMachine, LoggingLevel, StateMachineState, EventLoop, PolicyStateUpdateEvent, ArmRequestEvent, StopRequestEvent
-from bounce_policy_pkg.action.policy_to_command import ActionModelConfig, PolicyToNormalizedThrustAndBodyRate
-from bounce_policy_pkg.observation.ObservationConfig import ObservationConfig
-from bounce_policy_pkg.observation.observation import DroneViconObs
-from bounce_policy_pkg.observation.observation_data import ObservationData
-from bounce_policy_pkg.observation.observation_history import make_history_cls
-from bounce_policy_pkg.observation.observation_populator import get_observation_class, populate_observation
+# from bounce_policy_pkg.action.policy_to_command import ActionModelConfig, PolicyToNormalizedThrustAndBodyRate
+# from bounce_policy_pkg.observation.ObservationConfig import ObservationConfig
+# from bounce_policy_pkg.observation.observation import DroneViconObs
+# from bounce_policy_pkg.observation.observation_data import ObservationData
+# from bounce_policy_pkg.observation.observation_history import make_history_cls
+# from bounce_policy_pkg.observation.observation_populator import get_observation_class, populate_observation
 from bounce_policy_pkg.inference_server.PolicyServerInterface import PolicyServerInterface
 from bounce_policy_pkg.types.ball import BallState
 from bounce_policy_pkg.types.drone import DroneState
+
+# ---
+from action_models import Command, ActionModelConfig
+from action_models.policy_mapper import PolicyToNormalizedThrustAndBodyRate
+from observation_models import ObservationConfig, ObservationData, make_history_cls, observation_class_from_type, ObservationHistory
+# from sim_types.BallState import BallState
+# from sim_types.DroneState import DroneState
+
+
+# ---
+
+
 from std_msgs.msg import String, Bool, Empty
 import rospy
 import time
 import geometry_msgs.msg as geometry_msgs
-
 
 DEG= np.pi / 180  # Degrees to radians conversion
 G = 9.81
@@ -43,13 +54,13 @@ class PolicyInterface:
         self.clipping_values  = np.array(self.action_config.max_command_rate_change) * 1/self.SAMPLING_FREQUENCY
 
         # --- Observation Model ---
-        self.observation_model = get_observation_class(observation_config.actor_observation_type)
+        self.observation_model = observation_class_from_type(observation_config.actor_observation_type)
         self.observation_history_class = make_history_cls( 
             self.observation_model,
             lengths=observation_config.history_length_actor,
             delay=0
         )
-        self.observation_history = self.observation_history_class.generate_zero()
+        self.observation_history: ObservationHistory = self.observation_history_class.generate_zero()
         self.OBSERVATION_SHAPE = self.observation_history.to_array().shape
         
         # --- Start Server ---
@@ -67,7 +78,7 @@ class PolicyInterface:
         """
         Pushes the observation data to the observation history.
         """
-        obs = populate_observation(self.observation_model, observation_data)
+        obs = self.observation_model.from_observation_data(observation_data)
         self.observation_history = self.observation_history.push(obs)
 
     def get_command(self) -> Tuple[Command, np.ndarray]:
@@ -78,35 +89,7 @@ class PolicyInterface:
         policy_request = self.inference_server.run_inference(obs)
         time = rospy.Time.now().to_sec()
         request_command = self.policy_to_command.map(policy_request, time)
-            
-        # if last_policy_request is not None and self.action_config.use_command_rate_change_clipping:
-        if self.last_command is None or time - self.last_command.t > 0.1:
-            rospy.logwarn("No last command available. Setting default hover command.")
-            self.last_command = Command(collective_thrust=G, bodyrates=geometry_msgs.Vector3(0, 0, 0), is_single_rotor_thrust=False, t=time-1/self.SAMPLING_FREQUENCY)
-
-        previous_command_array = np.array([self.last_command.collective_thrust, self.last_command.bodyrates.x, self.last_command.bodyrates.y, self.last_command.bodyrates.z])
-        request_command_array = np.array([request_command.collective_thrust, request_command.bodyrates.x, request_command.bodyrates.y, request_command.bodyrates.z])
-
-        if self.action_config.use_command_rate_change_clipping:
-
-            delta_command = np.clip(request_command_array - previous_command_array, -self.clipping_values, self.clipping_values)
-
-            request_command_array = previous_command_array + delta_command
-
-        if self.action_config.use_command_filtering:
-            dt_nom = 1/self.SAMPLING_FREQUENCY
-            dt = time - self.last_command.t
-            dt = np.clip(dt, dt_nom*0.5, dt_nom*1.5)  # Ensure dt is not too small
-            alpha = 1 - np.exp(-dt* self.action_config.command_filter_cutoff_freq * 2 * np.pi)
-
-            request_command_array = alpha * request_command_array + (1-alpha) * previous_command_array
         
-        
-        request_command.collective_thrust = request_command_array[0]
-        request_command.bodyrates.x = request_command_array[1]
-        request_command.bodyrates.y = request_command_array[2]
-        request_command.bodyrates.z = request_command_array[3]
-
         self.last_command = request_command
         
         return request_command, policy_request
@@ -197,7 +180,7 @@ class Effects:
         return self.p._effect_push_observation(observation_data)
     def reset_observation(self):
         return self.p._effect_reset_observation()
-    def logging(self, msg:str, level:LoggingLevel = LoggingLevel.INFO):
+    def logging(self, message:str, level:LoggingLevel = LoggingLevel.INFO):
         self.p._effect_logging(msg, level)
     def get_ros_time(self) -> float:
         return self.p._get_ros_time()
