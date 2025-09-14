@@ -5,7 +5,7 @@ from agiros_msgs.msg._BallState import BallState as BallStateMsg
 from sim_types.BallState import BallState as _BaseBallState
 from sim_utils.jax_numpy_backend import numpy_jax_backend as bc
 
-bc.dataclass
+@bc.dataclass
 class BallState(_BaseBallState):
     @classmethod
     def from_msg(cls, msg: BallStateMsg) -> Self: 

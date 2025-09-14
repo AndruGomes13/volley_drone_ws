@@ -1,11 +1,9 @@
 <launch>
     <arg name="quad_name"/>
-    <arg name="recovery_policy_name" default=""/>
     <arg name="bounce_policy_name" />
 
     <node pkg="bounce_policy_pkg" type="mlp_ctrl_node.py" name="mlp_ctrl_node" output="screen">
         <param name="policy_path" value="$(find bounce_policy_pkg)/resources/policies/"/>
-        <param name="recovery_policy_name" value="$(arg recovery_policy_name)"/>
         <param name="bounce_policy_name" value="$(arg bounce_policy_name)"/>
         <param name="quad_name" value="$(arg quad_name)"/>
     </node>

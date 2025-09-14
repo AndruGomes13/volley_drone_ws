@@ -1,6 +1,5 @@
 
 
-
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -23,7 +22,6 @@ class StateMachineState(Enum):
     STOPPED = auto()
     ARMED = auto()
     RUNNING = auto()
-    RECOVERY = auto()
 
 # --- Events ---
 @dataclass
@@ -48,7 +46,6 @@ class Effects(Protocol):
     def go_to_origin(self): ...
     def reset_observation(self): ...
     def push_observation(self, observation_data: ObservationData): ...
-    def run_recovery_control(self) -> Optional[np.ndarray]: ...
     def run_bounce_control(self) -> Union[np.ndarray, np.ndarray]: ...
     def logging(self, message: str, level: LoggingLevel = LoggingLevel.INFO): ...
     def get_ros_time(self) -> float: ...
@@ -133,7 +130,6 @@ RUNNING_DRONE_POSITION_BOUNDS = (
 )
 RUNNING_DRONE_MAX_ANGLE = np.deg2rad(60)  # 45 degrees in radians 
 
-RECOVERY_DRONE_MAX_ANGLE = np.deg2rad(90)  # 60 degrees in radians
 
 # --- State Machine ---
 class StateMachine:
@@ -141,8 +137,7 @@ class StateMachine:
     Explanation of the state machine states:
     - STOPPED: The state machine is not running. It can transition to ARMED with an arm command.
     - ARMED: The state machine is armed and ready to run. It can transition to RUNNING when the ball state is valid and within bounds.
-    - RUNNING: The state machine is actively running the policy. It can transition to STOPPED with a stop command or if the drone or ball state goes out of bounds. I can also transition to RECOVERY if the drone or ball state goes out of bounds.
-    - RECOVERY: The state machine is in recovery mode, typically after a failure or out-of-bounds condition. It can transition back ARMED or STOPPED based on the user.
+    - RUNNING: The state machine is actively running the policy. It can transition to STOPPED with a stop command or if the drone or ball state goes out of bounds.
     """
     def __init__(self, effects: Effects, sampling_frequency: float = 10.0, start_check_window_duration: float = 1.0):
         self._buf_lock = threading.Lock()
@@ -174,7 +169,7 @@ class StateMachine:
             raise ValueError("Unknown event type")
 
     def _handle_arm_request(self):
-        if self.state in  (StateMachineState.STOPPED, StateMachineState.RECOVERY):
+        if self.state in  (StateMachineState.STOPPED,):
             #TODO: Check pre-arm conditions if needed
             self.state = StateMachineState.ARMED
             self.effects.go_to_origin()
@@ -184,7 +179,7 @@ class StateMachine:
             self.effects.logging("Arm request ignored in current state: " + str(self.state))
 
     def _handle_stop_request(self):
-        if self.state in (StateMachineState.ARMED, StateMachineState.RUNNING, StateMachineState.RECOVERY):
+        if self.state in (StateMachineState.ARMED, StateMachineState.RUNNING):
             self.state = StateMachineState.STOPPED
             self.effects.reset_observation()
             self.effects.logging("SM stopped.")
@@ -205,12 +200,9 @@ class StateMachine:
         
         # --- Push observation data ---
         observation_data = ObservationData(
-            # drone_state=drone_state,
             drone_state_noisy=drone_state,
-            # ball_state=ball_state,
             ball_state_noisy=ball_state,
             last_policy_request=self.last_policy_request,
-            # last_policy_command=self.last_command_request
         )
         self.effects.push_observation(observation_data)
         
@@ -224,20 +216,14 @@ class StateMachine:
 
         elif self.state == StateMachineState.ARMED:
             if self._check_pre_run_conditions():
-                self.effects.reset_observation() #TODO: Check if this make sense to add 
+                self.effects.reset_observation()
                 self.state = StateMachineState.RUNNING
                 self.effects.logging("Ball detected within ARMED bounds. Transitioning to RUNNING state.", LoggingLevel.INFO)
                 
         elif self.state == StateMachineState.RUNNING:
             if not self._check_running_conditions():
-                # self.state = StateMachineState.RECOVERY #TODO: DEBUG
-                self.state = StateMachineState.STOPPED #TODO: DEBUG
-                self.effects.logging("Running conditions not met. Transitioning to RECOVERY state.", LoggingLevel.WARN)
-
-        elif self.state == StateMachineState.RECOVERY:
-            if not self._check_recovery_conditions():
                 self.state = StateMachineState.STOPPED
-                self.effects.logging("Recovery conditions not met. Transitioning to STOPPED state.", LoggingLevel.WARN)
+                self.effects.logging("Running conditions not met. Transitioning to STOPPED state.", LoggingLevel.WARN)
 
         t_state_transitions = time.perf_counter()
         t_inf_time = None
@@ -249,13 +235,6 @@ class StateMachine:
             t_inf_start = time.perf_counter()
             self.last_policy_request, self.last_command_request = self.effects.run_bounce_control()
             t_inf_time = time.perf_counter() - t_inf_start
-        
-        elif self.state == StateMachineState.RECOVERY:
-            recovery_control = self.effects.run_recovery_control()
-            if recovery_control is not None:
-                self.last_policy_request = recovery_control
-            else:
-                self.last_policy_request = np.zeros((4,))
         
         t_end = time.perf_counter()
         # logging_str = ("Time breakdown (ms): \n"
@@ -390,20 +369,5 @@ class StateMachine:
 
         return True
 
-    def _check_recovery_conditions(self) -> bool:
-        # Perform necessary checks while in recovery mode:
-        # - The drone is within the defined bounds
-        # - The drone angle is within the defined bounds
-        
-        if self.last_drone_state is None:
-            return False
-
-        if not utilities.is_within_bounds(self.last_drone_state.position, ALL_DRONE_POSITION_BOUNDS):
-            return False
-
-        if self._drone_angle_from_vertical(self.last_drone_state) >= RECOVERY_DRONE_MAX_ANGLE:
-            return False
-
-        return True
 
 

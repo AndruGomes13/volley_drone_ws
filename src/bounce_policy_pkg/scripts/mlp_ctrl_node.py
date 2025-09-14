@@ -41,7 +41,6 @@ def main():
     rospy.init_node("mlp_ctrl_node", anonymous=True)
     policy_path = str(rospy.get_param("~policy_path"))
     bounce_policy_name = str(rospy.get_param("~bounce_policy_name", ""))
-    recovery_policy_name = str(rospy.get_param("~recovery_policy_name", ""))
     quad_name = str(rospy.get_param("~quad_name"))
     
     if not policy_path:
@@ -49,24 +48,17 @@ def main():
         return
     
     if not bounce_policy_name:
-        rospy.logerr("Bounce policy name not provided. Please set the ~bounce_policy_name parameter.")
+        rospy.logerr("Policy name not provided. Please set the ~policy_name parameter.")
         return
-    
-    if not recovery_policy_name:
-        rospy.logwarn("Recovery policy name not provided. Not using recovery policy.")
-        recovery_policy_name = None
     
     pilot = MLPPilot(
         quad_name=quad_name,
         policy_sampling_frequency=100,  # Hz
         policy_path=Path(policy_path),
-        bounce_policy_path=bounce_policy_name,
-        recovery_policy_path=recovery_policy_name if recovery_policy_name else None
+        bounce_policy_name=bounce_policy_name,
     )
     
     child_processes.append(pilot.bounce_policy.inference_server.server)
-    if recovery_policy_name:
-        child_processes.append(pilot.recovery_policy.inference_server.server)
         
     time.sleep(1)  # Allow time for the inference server to start
     rate = rospy.Rate(300)

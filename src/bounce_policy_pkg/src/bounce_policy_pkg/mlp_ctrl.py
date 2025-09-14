@@ -7,26 +7,15 @@ import threading
 import numpy as np
 from agiros_msgs.msg import QuadState, Command, PolicyState
 from bounce_policy_pkg.state_machine import StateMachine, LoggingLevel, StateMachineState, EventLoop, PolicyStateUpdateEvent, ArmRequestEvent, StopRequestEvent
-# from bounce_policy_pkg.action.policy_to_command import ActionModelConfig, PolicyToNormalizedThrustAndBodyRate
-# from bounce_policy_pkg.observation.ObservationConfig import ObservationConfig
-# from bounce_policy_pkg.observation.observation import DroneViconObs
-# from bounce_policy_pkg.observation.observation_data import ObservationData
-# from bounce_policy_pkg.observation.observation_history import make_history_cls
-# from bounce_policy_pkg.observation.observation_populator import get_observation_class, populate_observation
 from bounce_policy_pkg.inference_server.PolicyServerInterface import PolicyServerInterface
 from bounce_policy_pkg.types.ball import BallState
 from bounce_policy_pkg.types.drone import DroneState
+import agiros_msgs.msg as agi_msg
 
 # ---
 from action_models import Command, ActionModelConfig
 from action_models.policy_mapper import PolicyToNormalizedThrustAndBodyRate
 from observation_models import ObservationConfig, ObservationData, make_history_cls, observation_class_from_type, ObservationHistory
-# from sim_types.BallState import BallState
-# from sim_types.DroneState import DroneState
-
-
-# ---
-
 
 from std_msgs.msg import String, Bool, Empty
 import rospy
@@ -51,7 +40,6 @@ class PolicyInterface:
         
         # --- Action Model ---
         self.policy_to_command = PolicyToNormalizedThrustAndBodyRate(self.action_config)
-        self.clipping_values  = np.array(self.action_config.max_command_rate_change) * 1/self.SAMPLING_FREQUENCY
 
         # --- Observation Model ---
         self.observation_model = observation_class_from_type(observation_config.actor_observation_type)
@@ -172,8 +160,6 @@ class Effects:
         
     def run_bounce_control(self):
         return self.p._effect_run_bounce_policy()
-    def run_recovery_control(self):
-        return self.p._effect_run_recovery_policy()
     def go_to_origin(self):
         return self.p._effect_go_to_origin()
     def push_observation(self, observation_data: ObservationData):
@@ -181,7 +167,7 @@ class Effects:
     def reset_observation(self):
         return self.p._effect_reset_observation()
     def logging(self, message:str, level:LoggingLevel = LoggingLevel.INFO):
-        self.p._effect_logging(msg, level)
+        self.p._effect_logging(message, level)
     def get_ros_time(self) -> float:
         return self.p._get_ros_time()
     
@@ -192,14 +178,12 @@ class MLPPilot:
     MLP Pilot class that manages the policy execution, state management, and communication with the ROS system.
     It uses the PolicyInterface to interact with the JAX policy server and manages the drone and ball states.
     """  
-    def __init__(self, quad_name: str, policy_sampling_frequency: float, policy_path: Path, bounce_policy_path: Path, recovery_policy_path: Optional[Path] = None):
+    def __init__(self, quad_name: str, policy_sampling_frequency: float, policy_path: Path, bounce_policy_name: str):
         self.quad_name = quad_name
         
         # --- Policy Paths ---
-        bounce_policy_path = policy_path / bounce_policy_path
-        recovery_policy_path = policy_path / recovery_policy_path if recovery_policy_path else None
+        bounce_policy_path = policy_path / bounce_policy_name
         self.bounce_policy = PolicyInterface(bounce_policy_path, policy_sampling_frequency)
-        self.recovery_policy = PolicyInterface(recovery_policy_path, policy_sampling_frequency) if recovery_policy_path else None
         
         # --- Some Parameters ---
         self.SAMPLING_FREQUENCY = policy_sampling_frequency
@@ -233,7 +217,7 @@ class MLPPilot:
         )
         
     def init_publishers(self):
-        self.command_pub = rospy.Publisher(self.quad_name + "/agiros_pilot/feedthrough_command", Command, queue_size=1, tcp_nodelay=True)
+        self.command_pub = rospy.Publisher(self.quad_name + "/agiros_pilot/feedthrough_command", agi_msg.Command, queue_size=1, tcp_nodelay=True)
         self.policy_sm_state_pub = rospy.Publisher(self.quad_name + "/policy_sm_state", String, queue_size=1, tcp_nodelay=True)
         self.go_to_pose_pub = rospy.Publisher(self.quad_name + "/agiros_pilot/go_to_pose", geometry_msgs.PoseStamped, queue_size=1, tcp_nodelay=True)
 
@@ -251,9 +235,9 @@ class MLPPilot:
         ball_state = BallState.from_msg(msg.ball_state)
         
         # Subtract offset
-        drone_state.position = drone_state.position - np.array(ORIGIN_OFFSET)
-        # ball.position = drone_state.position - np.array(ORIGIN_OFFSET) #TODO: Re-enable this for real life. Atm the mojuco already outputs in the origin offset frame.
-        
+        drone_state = drone_state.replace(position=drone_state.position - ORIGIN_OFFSET)
+        # ball_state = ball_state.replace(position=ball_state.position - ORIGIN_OFFSET) #TODO: Re-enable this for real life. Atm the mojuco already outputs in the origin offset frame.
+
         # Parse event
         state_event = PolicyStateUpdateEvent(
             t=t,
@@ -274,8 +258,6 @@ class MLPPilot:
             status_msg.data = "ARMED"
         elif self.state_machine.state == StateMachineState.RUNNING:
             status_msg.data = "RUNNING"
-        elif self.state_machine.state == StateMachineState.RECOVERY:
-            status_msg.data = "RECOVERY"
             
         self.policy_sm_state_pub.publish(status_msg)
     
@@ -297,18 +279,21 @@ class MLPPilot:
         self.event_loop.push_event(stop_event)
         
     # --- Effects ---   
-    def _effect_run_bounce_policy(self) ->np.ndarray:
+    def _effect_run_bounce_policy(self) ->Tuple[np.ndarray, np.ndarray]:
         command, last_policy_request = self.bounce_policy.get_command()
-        self.command_pub.publish(command)
-        last_command_request = np.array([command.collective_thrust, command.bodyrates.x, command.bodyrates.y, command.bodyrates.z])
+        assert command.collective_thrust is not None, "Command collective thrust is None"
+        assert command.body_rate is not None, "Command body rate is None"
+        
+        cmd_msg = agi_msg.Command()
+        cmd_msg.collective_thrust = command.collective_thrust
+        cmd_msg.bodyrates.x = command.body_rate[0]
+        cmd_msg.bodyrates.y = command.body_rate[1]
+        cmd_msg.bodyrates.z = command.body_rate[2]
+        self.command_pub.publish(cmd_msg)
+        last_command_request = np.concatenate([command.collective_thrust, command.body_rate], axis=0)
         return last_policy_request, last_command_request
     
-    def _effect_run_recovery_policy(self) -> Optional[np.ndarray]:
-        if self.recovery_policy is None:
-            return None
-        command, last_policy_request = self.recovery_policy.get_command()
-        self.command_pub.publish(command)
-        return last_policy_request
+
     
     def _effect_go_to_origin(self):
         """
@@ -330,16 +315,12 @@ class MLPPilot:
         Pushes the observation data to the policy interfaces.
         """
         self.bounce_policy.push_observation(observation_data)
-        if self.recovery_policy is not None:
-            self.recovery_policy.push_observation(observation_data)
     
     def _effect_reset_observation(self):
         """
         Resets the observation history in the policy interfaces.
         """
         self.bounce_policy.observation_history = self.bounce_policy.observation_history_class.generate_zero()
-        if self.recovery_policy is not None:
-            self.recovery_policy.observation_history = self.recovery_policy.observation_history_class.generate_zero()    
     
     def _effect_logging(self, message: str, level: LoggingLevel = LoggingLevel.INFO):
         """
