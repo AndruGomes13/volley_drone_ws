@@ -1,0 +1,10 @@
+<launch>
+    <arg name="quad_name"/>
+    <arg name="policy_name" />
+
+    <node pkg="traj_policy_pkg" type="mlp_ctrl_node.py" name="mlp_ctrl_node" output="screen">
+        <param name="policy_path" value="$(find traj_policy_pkg)/resources/policies/"/>
+        <param name="policy_name" value="$(arg policy_name)"/>
+        <param name="quad_name" value="$(arg quad_name)"/>
+    </node>
+</launch>
